@@ -1,0 +1,19 @@
+{
+  "name": "trading-signal-generator",
+  "private": true,
+  "type": "module",
+  "author": {
+    "name": "Enrico Schintu",
+    "email": "schintu.enrico@gmail.com"
+  },
+  "scripts": {
+    "start": "node rsi.js"
+  },
+  "dependencies": {
+    "axios": "1.9.0",
+    "dotenv": "16.5.0",
+    "finnhub": "^1.2.19",
+    "technicalindicators": "3.1.0",
+    "yahoo-finance2": "2.13.3"
+  }
+}
