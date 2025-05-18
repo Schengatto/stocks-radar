@@ -1,7 +1,8 @@
 import fs from "fs";
 import { fetchCompanyDataFromFMP } from './connectors/fmp.js';
 import { getDescriptionFromSymbol, LARGE_CAPS, MID_CAPS } from './symbols/gettex.js';
-import { getFinnhubSymbolFromYahoo } from './symbols/yahoo-to-finnhub.js';
+import { sleep } from "./utility/promise.js";
+import { getFinnhubSymbolFromYahoo } from "./symbols/yahoo-to-finnhub.js";
 
 const Signal = {
     Buy: "buy",
@@ -13,6 +14,33 @@ const SYMBOLS = [
     ...LARGE_CAPS,
     ...MID_CAPS,
 ];
+
+const PATCH_FMP = {
+    "TSM": "TSM",
+    "PAH3.DE": "POAHY",
+    "UMG.AS": "UNVGY",
+    "AKRBP.OL": "AKAAF",
+    "AUTO.OL": "?",
+    "002466.SZ": "?",
+    "2269.T": "MEJHY",
+    "1800.HK": "CUCSY",
+    "CAR.AX": "?",
+    "8012.T": "?",
+    "FCT.MI": "FNCNF",
+    "SUM.NZ": "?",
+    "DNLM.L": "DNLMY",
+    "DOKA.SW": "?",
+    "SRRK": "?",
+    "SATS.OL": "SPASF",
+    "WB": "WB",
+    "HUMBLE.ST": "?",
+    "BARN.SW": "?",
+    "AKRO": "AKRO",
+    "0842.HK": "LCHIF",
+    "ACAST.ST": "?",
+    "NCAB.ST": "?",
+    "VNV.ST": "VSTKF",
+};
 
 function analyzeFundamentals(data) {
     const { overview, earnings, balanceSheet, incomeStatement } = data;
@@ -103,8 +131,8 @@ function analyzeFundamentals(data) {
     const results = [];
 
     for (let symbol of SYMBOLS) {
-        const commonSymbol = getFinnhubSymbolFromYahoo(symbol);
-        if (commonSymbol === "?") continue;
+        const commonSymbol = PATCH_FMP[symbol] || getFinnhubSymbolFromYahoo(symbol);
+        // if (commonSymbol === "?") continue;
 
         try {
             // const data = await fetchCompanyData(finnhubSymbol);
@@ -113,12 +141,13 @@ function analyzeFundamentals(data) {
 
             const stockResult = data
                 ? analyzeFundamentals(data)
-                : Signal.None;
+                : { signal: Signal.None, reasons: { unavailable: "Error fetching data" } };
 
             results.push({ symbol, name: getDescriptionFromSymbol(symbol), ...stockResult });
         } catch (e) {
             console.error(`Errore su ${symbol} (${commonSymbol}):`, e.message);
         }
+        sleep(500);
     }
 
     console.log(`Analizzati ${results.length}/${SYMBOLS.length}`);

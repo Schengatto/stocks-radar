@@ -8,41 +8,43 @@ const AUTH_KEYS = [
     process.env.FMP_API_KEY2,
     process.env.FMP_API_KEY3,
     process.env.FMP_API_KEY4,
-].filter(k => !!k); // Filtra chiavi non definite
+    process.env.FMP_API_KEY5,
+    process.env.FMP_API_KEY6,
+    process.env.FMP_API_KEY7,
+    process.env.FMP_API_KEY8,
+    process.env.FMP_API_KEY9,
+    process.env.FMP_API_KEY10,
+    process.env.FMP_API_KEY11,
+    process.env.FMP_API_KEY12,
+    process.env.FMP_API_KEY13,
+].filter(k => !!k);
 
 const BASE_URL = 'https://financialmodelingprep.com/api/v3';
-const MAX_RETRIES = AUTH_KEYS.length * 2; // Evita loop infiniti
 
-// Rotazione delle chiavi con fallback
-const fetchWithKeyRotation = async (url, retryCount = 0) => {
-    if (retryCount >= MAX_RETRIES) {
-        throw new Error('Max retries reached. All keys exhausted.');
-    }
-
-    const currentKey = AUTH_KEYS[retryCount % AUTH_KEYS.length];
-    try {
-        const response = await axios.get(`${url}&apikey=${currentKey}`);
-        return response.data;
-    } catch (err) {
-        if (err.response?.status === 429 || err.response?.status === 403) {
-            console.warn(`⚠️ Rate limit hit with key ${currentKey}. Retrying with next key...`);
-            return fetchWithKeyRotation(url, retryCount + 1);
+const fetchWithKeyRotation = async (url) => {
+    for (let i = 0; i < AUTH_KEYS.length; i++) {
+        const currentKey = AUTH_KEYS[i];
+        try {
+            const response = await axios.get(`${url}&apikey=${currentKey}`);
+            return response.data;
+        } catch (err) {
+            if (err.response?.status === 429) {
+                // console.warn(`⚠️ Rate limit hit with key index ${i}. Trying next key...`);
+                continue;
+            }
+            if (err?.response?.data["Error Message"])
+            console.error(err.response.data["Error Message"]);
+            throw err; // altri errori: esci subito
         }
-        throw err; // Rilancia altri errori (es. 404)
     }
+    throw new Error('Max retries reached. All keys exhausted.');
 };
 
 export const fetchCompanyDataFromFMP = async (symbol) => {
     try {
-        const endpoints = [
-            `${BASE_URL}/income-statement/${symbol}?limit=5`,
-            `${BASE_URL}/balance-sheet-statement/${symbol}?limit=5`,
-            `${BASE_URL}/ratios/${symbol}?limit=5`
-        ];
-
-        const [incomeData, balanceData, ratiosData] = await Promise.all(
-            endpoints.map(url => fetchWithKeyRotation(url))
-        );
+        const incomeData = await fetchWithKeyRotation(`${BASE_URL}/income-statement/${symbol}?limit=5`);
+        const balanceData = await fetchWithKeyRotation(`${BASE_URL}/balance-sheet-statement/${symbol}?limit=5`);
+        const ratiosData = await fetchWithKeyRotation(`${BASE_URL}/ratios/${symbol}?limit=5`);
 
         // EPS history (manual calc: netIncome / sharesOutstanding)
         const annualEarnings = incomeData.map((report) => ({
