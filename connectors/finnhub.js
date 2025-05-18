@@ -16,6 +16,7 @@ if (AUTH_KEYS.length === 0) {
 let currentKeyIndex = 0;
 const finnhubClient = new finnhub.DefaultApi();
 const apiKeyAuth = finnhub.ApiClient.instance.authentications['api_key'];
+apiKeyAuth.apiKey = AUTH_KEYS[currentKeyIndex];
 
 function setApiKey(index) {
     const key = AUTH_KEYS[index];
