@@ -18,7 +18,7 @@ const lowerLine = 30;
 const years = 5;
 
 const isAggregatingBuy = true;
-const buyAmount = 1000;
+const buyAmount = 200;
 // Set it to 1 to disable it
 const factor = 1;
 
@@ -189,6 +189,8 @@ const generateClosedTradesPerformance = async () => {
     console.log(`- Stop Loss: ${stopLossThreshold === -1 ? "off" : (stopLossThreshold * 100).toFixed(2) + "%"}`);
 
     console.log("\nYOUR PERFORMANCE");
+    console.log(`- Number of trades: ${trades.length}`);
+    console.log(`- Open positions (no SELL): ${openTrades.length} | € ${openTrades.length * buyAmount}`);
     console.log(`- Average performance: ${avgPerf.toFixed(2)}%`);
     console.log(`- Average duration: ${avgDuration.toFixed(1)} days`);
     console.log(`- Max Capital used at the same time: € ${maxCapitalUsed}`);
