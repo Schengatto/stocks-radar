@@ -68,3 +68,5 @@ export const getNews = async (symbol, last = 3) => {
         return [];
     }
 };
+
+export const newsParser = (n) => `${parseDate(n.datetime)}* - ${n.sentiment} - ${n.headline}*\n${n.summary ? n.summary + "\n" : ""}${n.url}`;

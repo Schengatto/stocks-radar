@@ -483,7 +483,8 @@ export const GETTEX_MAPPING = {
     "PLANET VENTURES INC": "PXI.V",
     "ROME RESOURCES PLC": "RMR.V",
     "PEACH PROPERTY GROUP LTD": "PEAN.SW",
-    "ISHARES CORE MSCI WORLD UCITS ETF USD (ACC)": "EUNL.DE"
+    "ISHARES CORE MSCI WORLD UCITS ETF USD (ACC)": "EUNL.DE",
+    "LEONARDO S.P.A." : "FINMF"
 };
 
 export const LARGE_CAPS = [
@@ -512,7 +513,6 @@ export const LARGE_CAPS = [
     "IFX.DE",
     "NKE",
     "VOW.DE",
-    "GOOGL",
     "PAH3.DE",
     "ASML.AS",
     "DTE.DE",
@@ -609,7 +609,8 @@ export const LARGE_CAPS = [
     "OMV.VI",
     "4528.T",
     "8012.T",
-    "PFGC"
+    "PFGC",
+    "FINMF,"
 ];
 
 export const MID_CAPS = [
@@ -873,7 +874,7 @@ export const SMALL_CAPS = [
     "GTBP",
     "ARQ",
     "OBE.TO",
-    "PEAN.SW"
+    "PEAN.SW",
 ];
 
 export const ETF = [

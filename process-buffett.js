@@ -2,11 +2,12 @@ import fs from "fs";
 import PDFDocument from "pdfkit";
 
 import { fetchCompanyDataFromFMP } from './connectors/fmp.js';
+import { sendFileViaTelegram } from "./connectors/telegram.js";
 import { getDescriptionFromSymbol, LARGE_CAPS, MID_CAPS } from './symbols/gettex.js';
 import { getFinnhubSymbolFromYahoo } from "./symbols/yahoo-to-finnhub.js";
+import { getRSI } from "./tech-indicators/rsi.js";
+import { getNews, newsParser } from "./utility/news.js";
 import { parseDate } from "./utility/parsers.js";
-import { sleep } from "./utility/promise.js";
-import { sendFileViaTelegram } from "./connectors/telegram.js";
 
 const Signal = {
     Buy: "buy",
@@ -17,7 +18,7 @@ const Signal = {
 const SYMBOLS = [
     ...LARGE_CAPS,
     ...MID_CAPS,
-];
+].sort();
 
 const PATCH_FMP = {
     "TSM": "TSM",
@@ -47,7 +48,14 @@ const PATCH_FMP = {
 };
 
 function analyzeFundamentals(data) {
-    const { overview, earnings, balanceSheet, incomeStatement, cashFlowStatement } = data;
+    const {
+        overview,
+        earnings,
+        balanceSheet,
+        incomeStatement,
+        cashFlowStatement,
+        metrics
+    } = data;
 
     const reasons = {
         passed: [],
@@ -56,16 +64,16 @@ function analyzeFundamentals(data) {
     };
 
     let score = 0;
-    const maxScore = 6;
+    const maxScore = 9;
 
     try {
-        // EPS Growth (trend, non crescita costante)
+        // EPS trend (non costante)
         const epsList = (earnings?.annualEarnings || [])
             .map(e => parseFloat(e.reportedEPS))
             .filter(eps => !isNaN(eps));
         const hasEPS = epsList.length >= 3;
         if (!hasEPS) {
-            reasons.unavailable.push("EPS data not sufficient");
+            reasons.unavailable.push("EPS data insufficient");
         } else {
             const first = epsList[0];
             const last = epsList[epsList.length - 1];
@@ -79,8 +87,7 @@ function analyzeFundamentals(data) {
 
         // ROE > 10%
         const roe = parseFloat(overview?.roe ?? "NaN");
-        const hasROE = !isNaN(roe);
-        if (!hasROE) {
+        if (isNaN(roe)) {
             reasons.unavailable.push("ROE not available");
         } else if (roe >= 0.10) {
             reasons.passed.push(`ROE acceptable (${roe.toFixed(2)})`);
@@ -91,8 +98,7 @@ function analyzeFundamentals(data) {
 
         // P/E < 25
         const pe = parseFloat(overview?.peNormalizedAnnual ?? "NaN");
-        const hasPE = !isNaN(pe);
-        if (!hasPE) {
+        if (isNaN(pe)) {
             reasons.unavailable.push("P/E ratio not available");
         } else if (pe < 25) {
             reasons.passed.push(`P/E is reasonable (${pe.toFixed(2)})`);
@@ -105,8 +111,7 @@ function analyzeFundamentals(data) {
         const bs = balanceSheet?.annualReports?.[0];
         const debt = bs ? parseFloat(bs.totalLiabilities) : NaN;
         const equity = bs ? parseFloat(bs.totalShareholderEquity) : NaN;
-        const hasDebtEquity = bs && !isNaN(debt) && !isNaN(equity) && equity !== 0;
-        if (!hasDebtEquity) {
+        if (!bs || isNaN(debt) || isNaN(equity) || equity === 0) {
             reasons.unavailable.push("Debt or equity not available or invalid");
         } else if (debt / equity < 2) {
             reasons.passed.push("Debt < 2x Equity");
@@ -119,20 +124,21 @@ function analyzeFundamentals(data) {
         const inc = incomeStatement?.annualReports?.[0];
         const netIncome = inc ? parseFloat(inc.netIncome) : NaN;
         const revenue = inc ? parseFloat(inc.totalRevenue) : NaN;
-        const hasMargin = inc && !isNaN(netIncome) && !isNaN(revenue) && revenue > 0;
-        const operatingMargin = hasMargin ? netIncome / revenue : NaN;
-        if (!hasMargin) {
+        if (!inc || isNaN(netIncome) || isNaN(revenue) || revenue <= 0) {
             reasons.unavailable.push("Net income or revenue not available");
-        } else if (operatingMargin > 0.10) {
-            reasons.passed.push(`Operating margin > 10% (${(operatingMargin * 100).toFixed(1)}%)`);
-            score++;
         } else {
-            reasons.failed.push(`Operating margin too low (${(operatingMargin * 100).toFixed(1)}%)`);
+            const operatingMargin = netIncome / revenue;
+            if (operatingMargin > 0.10) {
+                reasons.passed.push(`Operating margin > 10% (${(operatingMargin * 100).toFixed(1)}%)`);
+                score++;
+            } else {
+                reasons.failed.push(`Operating margin too low (${(operatingMargin * 100).toFixed(1)}%)`);
+            }
         }
 
-        // Free Cash Flow positive
+        // Free Cash Flow > 0
         const cf = cashFlowStatement?.annualReports?.[0];
-        const fcf = cf ? parseFloat(cf.freeCashFlow ?? cf.operatingCashflow) : NaN;
+        const fcf = cf ? parseFloat(cf.freeCashFlow) : NaN;
         if (isNaN(fcf)) {
             reasons.unavailable.push("Free Cash Flow not available");
         } else if (fcf > 0) {
@@ -140,6 +146,39 @@ function analyzeFundamentals(data) {
             score++;
         } else {
             reasons.failed.push("Free Cash Flow is negative");
+        }
+
+        // Current Ratio > 1.5
+        const currentRatio = parseFloat(metrics?.currentRatio ?? "NaN");
+        if (isNaN(currentRatio)) {
+            reasons.unavailable.push("Current Ratio not available");
+        } else if (currentRatio > 1.5) {
+            reasons.passed.push(`Current Ratio > 1.5 (${currentRatio.toFixed(2)})`);
+            score++;
+        } else {
+            reasons.failed.push(`Current Ratio too low (${currentRatio.toFixed(2)})`);
+        }
+
+        // Interest Coverage > 3
+        const interestCoverage = parseFloat(metrics?.interestCoverage ?? "NaN");
+        if (isNaN(interestCoverage)) {
+            reasons.unavailable.push("Interest Coverage not available");
+        } else if (interestCoverage > 3) {
+            reasons.passed.push(`Interest Coverage > 3 (${interestCoverage.toFixed(2)})`);
+            score++;
+        } else {
+            reasons.failed.push(`Interest Coverage too low (${interestCoverage.toFixed(2)})`);
+        }
+
+        // Debt/EBITDA < 3
+        const debtToEBITDA = parseFloat(metrics?.debtToEBITDA ?? "NaN");
+        if (isNaN(debtToEBITDA)) {
+            reasons.unavailable.push("Debt/EBITDA not available");
+        } else if (debtToEBITDA < 3) {
+            reasons.passed.push(`Debt/EBITDA < 3 (${debtToEBITDA.toFixed(2)})`);
+            score++;
+        } else {
+            reasons.failed.push(`Debt/EBITDA too high (${debtToEBITDA.toFixed(2)})`);
         }
 
         // Final decision logic
@@ -150,8 +189,8 @@ function analyzeFundamentals(data) {
             };
         }
 
-        if (score >= 5) return { signal: Signal.Buy, reasons };
-        if (score <= 2) return { signal: Signal.Sell, reasons };
+        if (score >= 7) return { signal: Signal.Buy, reasons };
+        if (score <= 3) return { signal: Signal.Sell, reasons };
         return { signal: Signal.None, reasons };
 
     } catch (error) {
@@ -211,7 +250,8 @@ const generateReport = async (data) => {
         doc.fontSize(16).text(`${entry.name}`, { underline: true });
         doc.moveDown(0.5);
         doc.fontSize(10).text(`Symbol: ${entry.symbol}`);
-        doc.text(`Signal: ${entry.signal}`);
+        doc.text(`Signal: ${entry.signal.toUpperCase()}`);
+        doc.text(`RSI: ${entry.rsi}`);
         doc.moveDown();
 
         const printList = (title, list) => {
@@ -225,9 +265,11 @@ const generateReport = async (data) => {
             doc.moveDown();
         };
 
-        printList('Passed:', entry.reasons.passed);
-        printList('Failed:', entry.reasons.failed);
-        printList('Unavailable:', entry.reasons.unavailable);
+        if (entry.reasons.passed?.length) printList('Passed:', entry.reasons.passed);
+        if (entry.reasons.failed?.length) printList('Unavailable:', entry.reasons.failed);
+        if (entry.reasons.unavailable?.length) printList('Unavailable:', entry.reasons.unavailable);
+
+        if (entry.news?.length) printList('Latest news:', entry.news);
 
         doc.moveDown(1);
         doc.strokeColor('#ccc').lineWidth(1)
@@ -239,7 +281,7 @@ const generateReport = async (data) => {
 
     let entryCountOnPage = 0;
     data.forEach((entry, i) => {
-        if (entryCountOnPage === 3) {
+        if (entryCountOnPage === 1) {
             doc.addPage();
             entryCountOnPage = 0;
         }
@@ -253,12 +295,20 @@ const generateReport = async (data) => {
     return outputPath;
 }
 
+const saveToFile = async (results) => {
+    fs.writeFileSync(`./output/report-buffet-analysis-${parseDate(new Date())}.json`, JSON.stringify(results, null, 2));
+};
+
 const doAnalysis = async () => {
     const results = [];
+    const elementToProcess = SYMBOLS.length;
+    let counter = 1;
 
     for (let symbol of SYMBOLS) {
-        const commonSymbol = PATCH_FMP[symbol] || getFinnhubSymbolFromYahoo(symbol);
+        const finnhubSymbol = getFinnhubSymbolFromYahoo(symbol);
+        const commonSymbol = PATCH_FMP[symbol] || finnhubSymbol;
         if (commonSymbol === "?") continue;
+        console.log(`${counter}/${elementToProcess}| Processing ${symbol} (${commonSymbol})`);
 
         try {
             const data = await fetchCompanyDataFromFMP(commonSymbol);
@@ -267,14 +317,19 @@ const doAnalysis = async () => {
                 ? analyzeFundamentals(data)
                 : { signal: Signal.None, reasons: { unavailable: "Error fetching data" } };
 
-            results.push({ symbol, name: getDescriptionFromSymbol(symbol), ...stockResult });
+            const rsi = await getRSI(symbol);
+            const newsList = await getNews(finnhubSymbol) || [];
+            const news = newsList.map(newsParser);
+
+            results.push({ symbol, name: getDescriptionFromSymbol(symbol), ...stockResult, rsi, news });
         } catch (e) {
             console.error(`Errore su ${symbol} (${commonSymbol}):`, e.message);
         }
-        sleep(500);
+        counter += 1;
+        await saveToFile(results);
     }
 
-    console.log(`Analizzati ${results.length}/${SYMBOLS.length}`);
+    console.log(`Analizzati ${results.length}/${elementToProcess}`);
 
     const toSell = results.filter(x => x.signal === Signal.Sell);
     const toBuy = results.filter(x => x.signal === Signal.Buy);
@@ -286,14 +341,12 @@ const doAnalysis = async () => {
 
     const filePath = await generateReport(results);
     await sendFileViaTelegram(filePath, `Value Investing Report\nBuy signals: ${toBuy.length}\nSell signals: ${toSell.length}`);
-
-    fs.writeFileSync(`./output/report-buffet-analysis${Date.now()}.json`, JSON.stringify(results, null, 2));
 }
 
 doAnalysis();
 
 // (async () => {
-//     const rawData = fs.readFileSync('./output/report-buffet-analysis.json', 'utf8');
+//     const rawData = fs.readFileSync('./output/report-buffet-analysis1747603153379.json', 'utf8');
 //     const data = JSON.parse(rawData);
 //     const filePath = await generateReport(data);
 //     await sendFileViaTelegram(filePath, `Value Investing Report\nBuy signals: ${data.filter(x => x.signal === Signal.Buy).length}\nSell signals: ${data.filter(x => x.signal === Signal.Sell).length}`);
