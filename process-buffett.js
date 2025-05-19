@@ -291,7 +291,7 @@ const generateReport = async (data) => {
     });
 
     doc.end();
-    console.log(`✅ PDF generato: ${outputPath}`);
+    console.log(`✅ PDF created: ${outputPath}`);
     return outputPath;
 }
 

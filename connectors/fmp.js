@@ -17,6 +17,13 @@ const AUTH_KEYS = [
     process.env.FMP_API_KEY11,
     process.env.FMP_API_KEY12,
     process.env.FMP_API_KEY13,
+    process.env.FMP_API_KEY14,
+    process.env.FMP_API_KEY15,
+    process.env.FMP_API_KEY16,
+    process.env.FMP_API_KEY17,
+    process.env.FMP_API_KEY18,
+    process.env.FMP_API_KEY19,
+    process.env.FMP_API_KEY20,
 ].filter(k => !!k);
 
 const BASE_URL = 'https://financialmodelingprep.com/api/v3';

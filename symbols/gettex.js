@@ -610,7 +610,7 @@ export const LARGE_CAPS = [
     "4528.T",
     "8012.T",
     "PFGC",
-    "FINMF,"
+    "FINMF"
 ];
 
 export const MID_CAPS = [
