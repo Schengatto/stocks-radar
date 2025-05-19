@@ -5,9 +5,9 @@ import { sendViaTelegram } from "./connectors/telegram.js";
 
 import { getDescriptionFromSymbol, STOCK_SYMBOLS } from "./symbols/gettex.js";
 import { getFinnhubSymbolFromYahoo } from "./symbols/yahoo-to-finnhub.js";
-import { parseDate } from "./utility/parsers.js";
-import { getNews, newsParser } from "./utility/news.js";
 import { getRSI } from "./tech-indicators/rsi.js";
+import { getNews, newsTelegramParser } from "./utility/news.js";
+import { parseDate } from "./utility/parsers.js";
 
 const Rating = {
     Low: "low",
@@ -105,7 +105,7 @@ const generateSignals = async () => {
         const finnhubSymbol = getFinnhubSymbolFromYahoo(c.symbol);
         const newsList = await getNews(finnhubSymbol);
 
-        let message = `*Undervalued company*:\n${symbolParser(c)}\n\n${newsList.map(newsParser).join("\n\n")}`;
+        let message = `*Undervalued company*:\n${symbolParser(c)}\n\n${newsList.map(newsTelegramParser).join("\n")}`;
 
         sendViaTelegram(message);
         console.log(message);
