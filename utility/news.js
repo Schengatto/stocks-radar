@@ -32,19 +32,18 @@ const generateSignalFromNews = (sentiment, score, threshold = 0.85) => {
     return Sentiment.Medium;
 };
 
-export const getNews = async (symbol, last = 3) => {
+export const getNews = async (symbol, last = 3, startingDate = undefined) => {
     const getFromDate = () => {
         const _fromDate = new Date();
-        _fromDate.setMonth(new Date().getMonth() - 3);
-        return parseDate(_fromDate);
+        _fromDate.setMonth(new Date().getMonth() - 1);
     };
 
-    const fromDate = getFromDate();
+    const fromDate = parseDate(startingDate || getFromDate());
     const toDate = parseDate(new Date());
 
     try {
         const data = await new Promise((resolve, reject) => {
-            finnhub.companyNews(symbol, parseDate(fromDate), parseDate(toDate), (error, data, response) => {
+            finnhub.companyNews(symbol, fromDate, toDate, (error, data, response) => {
                 if (error) {
                     return reject(error);
                 }
@@ -68,3 +67,6 @@ export const getNews = async (symbol, last = 3) => {
         return [];
     }
 };
+
+export const newsParser = (n) => `${parseDate(n.datetime)} - ${String(n.sentiment).toUpperCase()} - ${n.headline}\n${n.summary ? n.summary + "\n" : ""}${n.url}\n`;
+export const newsTelegramParser = (n) => `${parseDate(n.datetime)} - *${String(n.sentiment).toUpperCase()}* - ${n.headline}\n${n.summary ? n.summary + "\n" : ""}${n.url}\n`;

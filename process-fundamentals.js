@@ -1,13 +1,13 @@
 import dotenv from "dotenv";
-import { RSI } from 'technicalindicators';
 import yahooFinance from 'yahoo-finance2';
 
 import { sendViaTelegram } from "./connectors/telegram.js";
 
 import { getDescriptionFromSymbol, STOCK_SYMBOLS } from "./symbols/gettex.js";
 import { getFinnhubSymbolFromYahoo } from "./symbols/yahoo-to-finnhub.js";
+import { getRSI } from "./tech-indicators/rsi.js";
+import { getNews, newsTelegramParser } from "./utility/news.js";
 import { parseDate } from "./utility/parsers.js";
-import { getNews } from "./utility/news.js";
 
 const Rating = {
     Low: "low",
@@ -43,11 +43,8 @@ const getEpsRating = async (epsCurrentYear) => {
     }
 };
 
-const getRsiSignal = async (symbol) => {
-    const result = await yahooFinance.historical(symbol, {
-        period1: parseDate(startingDate),
-        interval: interval,
-    });
+const processSymbolData = async (symbol) => {
+    const rsi = await getRSI(symbol, startingDate, interval);
 
     const displayName = getDescriptionFromSymbol(symbol);
 
@@ -72,7 +69,6 @@ const getRsiSignal = async (symbol) => {
     const peRating = await getPeRating(peRatio);
     const epsRating = await getEpsRating(epsCurrentYear);
 
-    const closes = result.map(d => d.close).filter(Boolean);
 
     // --- Price performance calculation ---
     const latest = closes.at(-1);
@@ -81,10 +77,6 @@ const getRsiSignal = async (symbol) => {
 
     const performance24h = oneDayAgo ? ((latest - oneDayAgo) / oneDayAgo) * 100 : null;
     const performanceWeek = oneWeekAgo ? ((latest - oneWeekAgo) / oneWeekAgo) * 100 : null;
-
-    const rsiValues = RSI.calculate({ values: closes, period: 14 });
-    // const prev = rsiValues.at(-2);
-    const rsi = rsiValues.at(-1);
 
     return {
         symbol,
@@ -104,17 +96,16 @@ const getRsiSignal = async (symbol) => {
 };
 
 const generateSignals = async () => {
-    const results = await Promise.all(STOCK_SYMBOLS.map(async (s) => await getRsiSignal(s)));
+    const results = await Promise.all(STOCK_SYMBOLS.map(async (s) => await processSymbolData(s)));
     const best = results.filter(r => r.peRating === Rating.High && r.epsRating === Rating.High && r.rsi < 45).sort((a, b) => b.rsi - a.rsi);
 
     const symbolParser = (s) => `*${s.displayName}*\nP/E: ${s.peRatio.toFixed(2)} (${s.forwardPE.toFixed(2)}) | EPS: ${s.epsCurrentYear.toFixed(2)} (${s.epsForward.toFixed(2)}) | RSI: ${s.rsi}`;
-    const newsParser = (n) => `${parseDate(n.datetime)}* - ${n.sentiment} - ${n.headline}*\n${n.summary ? n.summary + "\n" : ""}${n.url}`;
 
     for (let c of best) {
         const finnhubSymbol = getFinnhubSymbolFromYahoo(c.symbol);
         const newsList = await getNews(finnhubSymbol);
 
-        let message = `*Undervalued company*:\n${symbolParser(c)}\n\n${newsList.map(newsParser).join("\n\n")}`;
+        let message = `*Undervalued company*:\n${symbolParser(c)}\n\n${newsList.map(newsTelegramParser).join("\n")}`;
 
         sendViaTelegram(message);
         console.log(message);

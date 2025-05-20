@@ -3,7 +3,7 @@ import fs from "fs";
 import { getDescriptionFromSymbol, STOCK_SYMBOLS } from "../symbols/gettex.js";
 import { FINNHUB_SYMBOLS } from "../symbols/finnhub.js";
 
-const PATCH = {
+const PATCH_FINNHUB = {
     "TSM": "TSMWF",
     "MAA": "MAA",
     "ITUB": "ITUB",
@@ -74,7 +74,7 @@ export const missingSymbols = () => {
         let finnhubSymbol = FINNHUB_SYMBOLS.filter(x => x.type === "Common Stock").find(x => x.symbol === yahooSymbol)?.symbol;
 
         if (!finnhubSymbol) {
-            finnhubSymbol = PATCH[yahooSymbol];
+            finnhubSymbol = PATCH_FINNHUB[yahooSymbol];
         }
 
         if (!finnhubSymbol) {
