@@ -10,8 +10,10 @@ export const getRSI = async (symbol, startingDate = undefined, interval = "1d") 
         _startingDate.setFullYear(now.getFullYear() - 1);
     }
 
+    const period1 = parseDate(_startingDate);
+
     const result = await yahooFinance.historical(symbol, {
-        period1: parseDate(_startingDate),
+        period1: period1,
         interval: interval,
     });
 
