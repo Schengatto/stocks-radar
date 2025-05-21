@@ -7,7 +7,7 @@ export const getRSI = async (symbol, startingDate = undefined, interval = "1d") 
     if (!_startingDate) {
         const now = new Date();
         _startingDate = new Date();
-        _startingDate.setFullYear(now.getFullYear() - 1);
+        _startingDate.setFullYear(now.getFullYear() - 2);
     }
 
     const period1 = parseDate(_startingDate);

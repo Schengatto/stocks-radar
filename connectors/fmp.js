@@ -56,6 +56,7 @@ export const fetchCompanyDataFromFMP = async (symbol) => {
         const keyMetricsData = await fetchWithKeyRotation(`${BASE_URL}/key-metrics/${symbol}?limit=5`);
 
         const annualEarnings = incomeData.map((report) => ({
+            date: report.date,
             reportedEPS: report.eps ?? NaN
         })).filter(e => !isNaN(e.reportedEPS));
 
