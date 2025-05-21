@@ -36,9 +36,13 @@ export const getNews = async (symbol, last = 3, startingDate = undefined) => {
     const getFromDate = () => {
         const _fromDate = new Date();
         _fromDate.setMonth(new Date().getMonth() - 1);
+        return _fromDate;
     };
 
-    const fromDate = parseDate(startingDate || getFromDate());
+    const fromDate = startingDate
+        ? parseDate(startingDate)
+        : parseDate(getFromDate());
+
     const toDate = parseDate(new Date());
 
     try {

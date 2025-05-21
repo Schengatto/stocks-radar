@@ -1,5 +1,5 @@
 import fs from "fs";
-import PDFDocument from "pdfkit";
+import PDFDocument from "pdfkit-table";
 
 import { fetchCompanyDataFromFMP } from './connectors/fmp.js';
 import { sendFileViaTelegram } from "./connectors/telegram.js";
@@ -8,6 +8,7 @@ import { getFinnhubSymbolFromYahoo } from "./symbols/yahoo-to-finnhub.js";
 import { getRSI } from "./tech-indicators/rsi.js";
 import { getNews } from "./utility/news.js";
 import { parseDate } from "./utility/parsers.js";
+import { sleep } from "./utility/promise.js";
 
 const Signal = {
     Buy: "buy",
@@ -242,9 +243,7 @@ const generateReport = async (data) => {
     );
     doc.moveDown();
 
-    doc.text(
-        `The methodology follows these core principles:`
-    );
+    doc.text(`The methodology follows these core principles:`);
     doc.moveDown(0.5);
     doc.list([
         "A consistent and upward trend in Earnings Per Share (EPS), indicating sustainable growth.",
@@ -285,54 +284,132 @@ const generateReport = async (data) => {
     // --- Detailed Company Analysis ---
     doc.addPage();
 
-    const writeEntry = (entry) => {
+    const writeEntry = async (entry) => {
         doc.fontSize(16).text(`${entry.name}`, { underline: true });
         doc.moveDown(0.5);
-        doc.fontSize(10).text(`Symbol: ${entry.symbol}`);
-        doc.text(`Signal: ${entry.signal.toUpperCase()}`);
-        doc.text(`RSI: ${entry.rsi}`);
+        doc.fontSize(10).text(`Symbol: ${entry.symbol} | Signal: ${entry.signal.toUpperCase()} | RSI (Monthly timeframe): ${entry.rsi}`);
         doc.moveDown();
 
-        if (entry.reasons.passed?.length) printList(doc, 'Passed:', entry.reasons.passed);
-        if (entry.reasons.failed?.length) printList(doc, 'Failed:', entry.reasons.failed);
-        if (entry.reasons.unavailable?.length) printList(doc, 'Unavailable:', entry.reasons.unavailable);
+        if (entry.reasons) {
+            const maxLen = Math.max(
+                entry.reasons.passed?.length || 0,
+                entry.reasons.failed?.length || 0,
+                entry.reasons.unavailable?.length || 0
+            );
 
-        if (entry.news?.length) {
-            doc.font('Helvetica-Bold').text('Latest news:');
-            doc.moveDown(0.5);
-            entry.news.forEach((item, idx) => {
-                doc.font('Helvetica-Bold', 10).text(`• ${parseDate(item.datetime)} | [${item.sentiment.toUpperCase()}] | ${item.headline}`);
-                doc.fontSize(10).font('Helvetica');
-                if (item.summary) doc.text(`${item.summary}`);
-                if (item.url) doc.text(`${item.url}`, { underline: true })
-                if (idx < entry.news.length - 1) doc.moveDown(1);
+            const tableData = {
+                headers: ["Passed", "Failed", "Unavailable"],
+                rows: Array.from({ length: maxLen }).map((_, i) => [
+                    entry.reasons.passed?.[i] ?? "",
+                    entry.reasons.failed?.[i] ?? "",
+                    entry.reasons.unavailable?.[i] ?? ""
+                ])
+            };
+
+            await doc.table(tableData, {
+                width: doc.page.width - doc.page.margins.left - doc.page.margins.right,
+                columnSpacing: 3,
+                prepareHeader: () => doc.font('Helvetica-Bold').fontSize(9),
+                prepareRow: (row, i) => {
+                    doc.font('Helvetica').fontSize(9);
+                    row.options = { padding: 2 };
+                },
             });
-            doc.moveDown(2);
+
+            doc.moveDown();
         }
 
-        doc.moveDown(1);
-        doc.strokeColor('#ccc').lineWidth(1)
-            .moveTo(doc.page.margins.left, doc.y)
-            .lineTo(doc.page.width - doc.page.margins.right, doc.y)
-            .stroke();
-        doc.moveDown(1);
+        if (entry.fundamentals) {
+            const f = entry.fundamentals;
+
+            doc.font('Helvetica-Bold').text('Key Financials & EPS', { underline: true });
+            doc.moveDown(0.5);
+
+            const xLeft = doc.x;
+            const xRight = doc.page.width / 2 + doc.page.margins.left / 2;
+            const startY = doc.y;
+
+            const tableData = {
+                headers: ["Metric", "Value"],
+                rows: [
+                    ["P/E Ratio", f.pe?.toFixed(2) ?? 'N/A'],
+                    ["ROE", f.roe?.toFixed(2) ?? 'N/A'],
+                    ["Revenue", f.revenue?.toLocaleString() ?? 'N/A'],
+                    ["Net Income", f.netIncome?.toLocaleString() ?? 'N/A'],
+                    ["Free Cash Flow", f.freeCashFlow?.toLocaleString() ?? 'N/A'],
+                    ["Total Liabilities", f.totalLiabilities?.toLocaleString() ?? 'N/A'],
+                    ["Total Equity", f.totalEquity?.toLocaleString() ?? 'N/A'],
+                    ["Current Ratio", f.currentRatio?.toFixed(2) ?? 'N/A'],
+                    ["Interest Coverage", f.interestCoverage?.toFixed(2) ?? 'N/A'],
+                    ["Debt/EBITDA", isNaN(f.debtToEBITDA) ? "N/A" : f.debtToEBITDA.toFixed(2)]
+                ],
+            };
+
+            const tableStartY = doc.y;
+
+            await doc.table(tableData, {
+                x: xLeft,
+                y: tableStartY,
+                width: (doc.page.width - doc.page.margins.left - doc.page.margins.right) / 2 - 10,
+                columnSpacing: 3,
+                prepareHeader: () => doc.font('Helvetica-Bold').fontSize(9),
+                prepareRow: (row, i) => {
+                    doc.font('Helvetica').fontSize(9);
+                    row.options = { padding: 2 };
+                },
+            });
+
+            if (entry.news?.length) {
+                doc.font('Helvetica-Bold').fontSize(10).text('Latest news:');
+                doc.moveDown(0.5);
+
+                entry.news.forEach((item, idx) => {
+                    doc.font('Helvetica-Bold', 9)
+                        .text(`• ${parseDate(item.datetime)} | [${item.sentiment.toUpperCase()}] | ${item.headline}`);
+                    doc.font('Helvetica').fontSize(9);
+
+                    if (item.summary) doc.text(item.summary);
+                    if (item.url) doc.fillColor('blue').text(item.url, { underline: true });
+                    doc.fillColor('black');
+
+                    if (idx < entry.news.length - 1) doc.moveDown(1);
+                });
+
+                doc.moveDown(1);
+            }
+
+            const epsList = f.eps ?? [];
+            if (epsList.length > 0) {
+                const epsX = xRight;
+                const epsY = tableStartY;
+
+                doc.font('Helvetica-Bold').fontSize(9).text('EPS (Annual):', epsX, epsY);
+                doc.font('Helvetica').fontSize(9);
+                epsList.forEach((e, i) => {
+                    const line = `• ${e.year ?? 'N/A'}: ${e.value ?? 'N/A'}`;
+                    doc.text(line, epsX, epsY + 15 + i * 12);
+                });
+            }
+
+            doc.moveDown(1);
+        }
     };
+    doc.moveDown(2);
 
     let entryCountOnPage = 0;
-    data.forEach((entry, i) => {
+    for (let entry of data) {
         if (entryCountOnPage === 1) {
             doc.addPage();
             entryCountOnPage = 0;
         }
-
-        writeEntry(entry);
+        await writeEntry(entry);
         entryCountOnPage++;
-    });
+    }
 
     doc.end();
     console.log(`✅ PDF created: ${outputPath}`);
     return outputPath;
-}
+};
 
 const saveToFile = async (results) => {
     fs.writeFileSync(`./output/report-buffet-analysis-${parseDate(new Date())}.json`, JSON.stringify(results, null, 2));
@@ -351,16 +428,33 @@ const doAnalysis = async () => {
 
         try {
             const data = await fetchCompanyDataFromFMP(commonSymbol);
-
-            const stockResult = data
-                ? analyzeFundamentals(data)
-                : { signal: Signal.None, reasons: { unavailable: "Error fetching data" } };
-
-            const rsi = await getRSI(symbol);
+            const stockResult = data ? analyzeFundamentals(data) : { signal: Signal.None, reasons: { unavailable: "Error fetching data" } };
+            const rsi = await getRSI(symbol, undefined, "1mo");
             const newsList = await getNews(finnhubSymbol) || [];
-            const news = newsList;
 
-            results.push({ symbol, name: getDescriptionFromSymbol(symbol), ...stockResult, rsi, news });
+            results.push({
+                symbol,
+                name: getDescriptionFromSymbol(symbol),
+                ...stockResult,
+                rsi,
+                news: newsList,
+                fundamentals: {
+                    pe: parseFloat(data.overview?.peNormalizedAnnual ?? "NaN"),
+                    roe: parseFloat(data.overview?.roe ?? "NaN"),
+                    eps: (data.earnings?.annualEarnings || []).map((e, i) => ({
+                        year: e.date,
+                        value: parseFloat(e.reportedEPS)
+                    })),
+                    revenue: parseFloat(data.incomeStatement?.annualReports?.[0]?.totalRevenue ?? "NaN"),
+                    netIncome: parseFloat(data.incomeStatement?.annualReports?.[0]?.netIncome ?? "NaN"),
+                    freeCashFlow: parseFloat(data.cashFlowStatement?.annualReports?.[0]?.freeCashFlow ?? "NaN"),
+                    totalLiabilities: parseFloat(data.balanceSheet?.annualReports?.[0]?.totalLiabilities ?? "NaN"),
+                    totalEquity: parseFloat(data.balanceSheet?.annualReports?.[0]?.totalShareholderEquity ?? "NaN"),
+                    currentRatio: parseFloat(data.metrics?.currentRatio ?? "NaN"),
+                    interestCoverage: parseFloat(data.metrics?.interestCoverage ?? "NaN"),
+                    debtToEBITDA: parseFloat(data.metrics?.debtToEBITDA ?? "NaN")
+                }
+            });
         } catch (e) {
             console.error(`Errore su ${symbol} (${commonSymbol}):`, e.message);
         }
@@ -368,19 +462,12 @@ const doAnalysis = async () => {
         await saveToFile(results);
     }
 
-    console.log(`Analizzati ${results.length}/${elementToProcess}`);
-
     const toSell = results.filter(x => x.signal === Signal.Sell);
     const toBuy = results.filter(x => x.signal === Signal.Buy);
-    console.log("\n\nCompanies to SELL")
-    console.log(toSell.map(x => `${x.symbol}: ${JSON.stringify(x.reasons)}`).join("\n"));
-
-    console.log("\n\nCompanies to BUY")
-    console.log(toBuy.map(x => `${x.symbol}: ${JSON.stringify(x.reasons)}`).join("\n"));
-
     const filePath = await generateReport(results);
+    await sleep(5000);
     await sendFileViaTelegram(filePath, `Value Investing Report\nBuy signals: ${toBuy.length}\nSell signals: ${toSell.length}`);
-}
+};
 
 doAnalysis();
 
