@@ -4,6 +4,7 @@ import { getNews } from "./utility/news.js";
 import { sleep } from "./utility/promise.js";
 import { getRSI } from "./tech-indicators/rsi.js";
 import { Signal, analyzeFundamentals, generateReport, saveToFile } from './value-investing/index.js';
+import { NASDAQ_LARGE_CAPS } from './symbols/nasdaq.js';
 
 const TICKERS = [
     ...NASDAQ_LARGE_CAPS,
@@ -58,7 +59,7 @@ const processTickers = async (tickers) => {
 };
 
 (async () => {
-    const tickers = TICKERS.slice(0, 1);
+    const tickers = TICKERS;
     const results = await processTickers(tickers);
     const reportPath = await generateReport(results);
     await sleep(5000);
