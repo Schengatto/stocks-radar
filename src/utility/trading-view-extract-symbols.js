@@ -2,7 +2,7 @@ import axios from 'axios';
 import fs from "fs";
 
 const BASE_URL = 'https://symbol-search.tradingview.com/symbol_search/v3/';
-const LIMIT = 1000;
+const LIMIT = 50;
 
 const headers = {
     'accept': '*/*',
@@ -24,11 +24,13 @@ async function fetchAllSymbols() {
     let start = 0;
     let symbolsRemaining = Infinity;
 
+    const exchange = "NASDAQ";
+
     while (symbolsRemaining > 0) {
-        const url = `${BASE_URL}?text=&hl=1&exchange=GETTEX&lang=en&search_type=stocks&start=${start}&domain=production&sort_by_country=US&promo=true`;
+        const getSymbolsURL = `${BASE_URL}?text=&hl=1&exchange=${exchange}&lang=en&search_type=stocks&start=${start}&domain=production`;
 
         try {
-            const response = await axios.get(url, { headers });
+            const response = await axios.get(getSymbolsURL, { headers });
             const data = response.data;
 
             if (!data.symbols || !Array.isArray(data.symbols)) {
@@ -36,7 +38,11 @@ async function fetchAllSymbols() {
                 break;
             }
 
-            const symbols = data.symbols.map(item => item.description);
+            const symbols = data.symbols.map(item => ({
+                symbol: item.symbol,
+                name: item.description,
+            }))
+
             allSymbols.push(...symbols);
 
             symbolsRemaining = data.symbols_remaining;
@@ -57,7 +63,7 @@ fetchAllSymbols()
     .then(symbols => {
         console.log('\nTotale simboli estratti:', symbols.length);
         console.log(JSON.stringify(symbols, null, 2));
-        fs.writeFileSync('symbols.json', JSON.stringify(symbols, null, 2));
+        fs.writeFileSync('../output/nasdaq-symbols.json', JSON.stringify(symbols, null, 2));
     })
     .catch(error => {
         console.error('Errore generale:', error);

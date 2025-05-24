@@ -3,7 +3,7 @@ import fs from "fs";
 import { RSI } from 'technicalindicators';
 import yahooFinance from 'yahoo-finance2';
 
-import { CRYPTO, ETF, LARGE_CAPS, MID_CAPS } from "./symbols/gettex.js";
+import { CRYPTO, ETF, LARGE_CAPS, MID_CAPS } from "../symbols/gettex.js";
 
 dotenv.config();
 console.log(`[${new Date().toISOString()}] Starting RSI signals...`);

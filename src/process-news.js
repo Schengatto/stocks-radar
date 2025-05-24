@@ -1,18 +1,15 @@
 import fs from "fs";
 
-import { getDescriptionFromSymbol, LARGE_CAPS, MID_CAPS } from './symbols/gettex.js';
-import { getFinnhubSymbolFromYahoo } from "./symbols/yahoo-to-finnhub.js";
+import { sendViaTelegram } from "./connectors/telegram.js";
+import { NASDAQ_LARGE_CAPS } from "./symbols/nasdaq.js";
 import { getRSI } from "./tech-indicators/rsi.js";
 import { getNews, newsTelegramParser } from "./utility/news.js";
-import { sleep } from "./utility/promise.js";
 import { parseDate } from "./utility/parsers.js";
-import { sendViaTelegram } from "./connectors/telegram.js";
+import { sleep } from "./utility/promise.js";
 
-const SYMBOLS = [
-    ...new Set([
-        ...LARGE_CAPS,
-        // ...MID_CAPS,
-    ])
+const TICKERS = [
+    ...NASDAQ_LARGE_CAPS,
+    // ...NASDAQ_MID_CAPS,
 ].sort();
 
 const saveToFile = async (results) => {
@@ -20,7 +17,7 @@ const saveToFile = async (results) => {
 };
 
 const generateReport = async (results) => {
-    const data = results || JSON.parse(fs.readFileSync('./output/report-buffet-analysis-2025-05-20.json', 'utf8')).filter(e => !!e.news.length);
+    const data = results || JSON.parse(fs.readFileSync(`./output/report-news-${parseDate(new Date())}.json`, 'utf8')).filter(e => !!e.news.length);
 
     const today = parseDate(new Date());
 
@@ -51,33 +48,28 @@ const generateReport = async (results) => {
 
 const processNews = async () => {
     const results = [];
-    const elementToProcess = SYMBOLS.length;
+    const elementToProcess = TICKERS.length;
     let counter = 1;
 
-    for (let symbol of SYMBOLS) {
-        const finnhubSymbol = getFinnhubSymbolFromYahoo(symbol);
-        if (finnhubSymbol === "?") continue;
-        console.log(`${counter}/${elementToProcess}| Processing ${symbol} (${finnhubSymbol})`);
+    for (let { symbol, name } of TICKERS) {
+        console.log(`${counter}/${elementToProcess}| Processing ${name} (${symbol})`);
 
         try {
             const rsi = await getRSI(symbol);
-            const newsList = await getNews(finnhubSymbol, 5, new Date()) || [];
+            const newsList = await getNews(symbol, 5, new Date()) || [];
             const news = newsList;
             if (news.length) {
-                results.push({ symbol, name: getDescriptionFromSymbol(symbol), rsi, news });
+                results.push({ symbol, name, rsi, news });
             }
         } catch (e) {
-            console.error(`Errore su ${symbol} (${finnhubSymbol}):`, e.message);
+            console.error(`Errore su ${anme} (${symbol}):`, e.message);
         }
         counter += 1;
         await saveToFile(results);
         await sleep(500);
     }
-
-    console.log(`Analizzati ${results.length}/${elementToProcess}`);
-
+    console.log(`Processed ${results.length}/${elementToProcess}`);
     await generateReport(results);
 };
 
-// processNews();
-generateReport();
+processNews();
