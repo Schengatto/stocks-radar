@@ -42,7 +42,7 @@ export const generateReport = async (_data) => {
 
     doc.fontSize(12).font('Helvetica').text(
         `This report is automatically generated using a Value Investing approach inspired by Warren Buffett and Benjamin Graham. ` +
-        `The analysis evaluates large and mid-cap companies based on a set of fundamental criteria to identify potentially undervalued opportunities with strong financial health.`,
+        `The analysis evaluates large-cap companies based on a set of fundamental criteria to identify potentially undervalued opportunities with strong financial health.`,
         { align: 'left' }
     );
     doc.moveDown();
@@ -63,8 +63,8 @@ export const generateReport = async (_data) => {
     doc.moveDown();
 
     doc.text(
-        `Each company receives a score based on the number of criteria met. A score of 7 or more triggers a BUY signal, ` +
-        `while 3 or fewer triggers a SELL signal. Intermediate scores are classified as HOLD or No Signal.`
+        `Each company receives a score based on the number of criteria met. A score of 7 or more triggers a POSITIVE signal, ` +
+        `while 3 or fewer triggers a NEGATIVE signal. Intermediate scores are classified as NONE or No Signal.`
     );
     doc.moveDown();
 
@@ -77,13 +77,21 @@ export const generateReport = async (_data) => {
     );
     doc.fillColor('black');
 
-    // --- Buy Signals Page ---
-    doc.addPage();
-    printList(doc, "Positive Outlook", buySignals.map(s => s.name));
+    if (buySignals.length) {
+        // --- Buy Signals Page ---
+        doc.addPage();
+        doc.font('Helvetica-Bold').text("Positive Outlook");
+        doc.font('Helvetica');
+        doc.list(buySignals.map(s => s.name));
+    }
 
-    // --- Sell Signals Page ---
-    doc.addPage();
-    printList(doc, "Negative Outlook", sellSignals.map(s => s.name));
+    if (sellSignals.length) {
+         // --- Sell Signals Page ---
+        doc.addPage();
+        doc.font('Helvetica-Bold').text("Negative Outlook");
+        doc.font('Helvetica');
+        doc.list(sellSignals.map(s => s.name));
+    }
 
     // --- Detailed Company Analysis ---
     doc.addPage();
