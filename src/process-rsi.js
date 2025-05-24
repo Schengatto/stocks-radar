@@ -3,13 +3,18 @@ import { RSI } from 'technicalindicators';
 import yahooFinance from 'yahoo-finance2';
 
 import { sendViaTelegram } from "./connectors/telegram.js";
-import { getDescriptionFromSymbol, GETTEX_MAPPING, STOCK_SYMBOLS } from "./symbols/gettex.js";
+import { NASDAQ_LARGE_CAPS } from "./symbols/nasdaq.js";
 
 const Signal = {
     Buy: "buy",
     Sell: "sell",
     None: "none",
 }
+
+const TICKERS = [
+    ...NASDAQ_LARGE_CAPS,
+    // ...NASDAQ_MID_CAPS,
+].sort();
 
 dotenv.config();
 console.log(`[${new Date().toISOString()}] Starting RSI signals...`);
@@ -20,7 +25,7 @@ const length = 14;
 const upperLine = 70;
 const lowerLine = 30;
 
-const getRsiSignal = async (symbol) => {
+const getRsiSignal = async (symbol, name) => {
     const result = await yahooFinance.historical(symbol, {
         period1: '2020-01-01',
         interval: interval,
@@ -54,7 +59,6 @@ const getRsiSignal = async (symbol) => {
 
     // 👇 Fetch P/E ratio
     let peRatio = 0;
-    const displayName = getDescriptionFromSymbol(symbol);
     let forwardPE = 0;
     let averageAnalystRating = "NA";
     let earningsTimestampStart = "NA";
@@ -74,10 +78,10 @@ const getRsiSignal = async (symbol) => {
     }
     return {
         symbol,
+        name,
         signal,
         performance24h,
         performanceWeek,
-        displayName,
         peRatio,
         forwardPE,
         averageAnalystRating,
@@ -88,22 +92,26 @@ const getRsiSignal = async (symbol) => {
 };
 
 const generateSignals = async () => {
-    const results = await Promise.all(STOCK_SYMBOLS.map(async (s) => await getRsiSignal(s)));
+    const results = await Promise.all(TICKERS.map(async ({ symbol, name }) => await getRsiSignal(symbol, name)));
 
     const buySymbols = results.filter(r => r.signal === Signal.Buy);
     const sellSymbol = results.filter(r => r.signal === Signal.Sell);
 
     let message = "";
 
-    const symbolParser = (s) => `*${s.displayName}* | 1d: ${s.performance24h.toFixed(2)}% | 1w: ${s.performanceWeek.toFixed(2)}% | P/E: ${s.peRatio.toFixed(2)} (${s.forwardPE.toFixed(2)}) | EPS: ${s.epsCurrentYear.toFixed(2)} (${s.epsForward.toFixed(2)}) | earnings: ${s.earningsTimestampStart}`;
+    const tickerParser = (t) => `*${t.name}* | 1d: ${t.performance24h.toFixed(2)}% | 1w: ${t.performanceWeek.toFixed(2)}% | P/E: ${t.peRatio.toFixed(2)} (${t.forwardPE.toFixed(2)}) | EPS: ${t.epsCurrentYear.toFixed(2)} (${t.epsForward.toFixed(2)}) | earnings: ${t.earningsTimestampStart}`;
+
+    if (buySymbols.length || sellSymbol.length) {
+        message = `*RSI Signals - Timeframe ${interval}*\n\n`;
+    }
 
     if (!!buySymbols.length) {
-        message = `📈 *${buySymbols.length} BUY SIGNAL DETECTED*\n${buySymbols.map(symbolParser).join(",\n\n")}`;
-        message = `________________\n`;
+        message = `${message}📈 *${buySymbols.length} BUY SIGNAL DETECTED*\n${buySymbols.map(tickerParser).join(",\n\n")}`;
+        message = `${message}________________\n`;
     }
 
     if (!!sellSymbol.length) {
-        message = `${message}\n\n*📉 ${sellSymbol.length} SELL SIGNAL DETECTED*\n${sellSymbol.map(symbolParser).join(",\n\n")}`;
+        message = `${message}\n\n*📉 ${sellSymbol.length} SELL SIGNAL DETECTED*\n${sellSymbol.map(tickerParser).join(",\n\n")}`;
     }
 
     if (!message) return;

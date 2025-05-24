@@ -1,5 +1,5 @@
 {
-  "name": "trading-signal-generator",
+  "name": "stocks-radar",
   "private": true,
   "type": "module",
   "author": {
@@ -7,7 +7,9 @@
     "email": "schintu.enrico@gmail.com"
   },
   "scripts": {
-    "start": "node rsi.js"
+    "rsi": "node ./src/process-rsi.js",
+    "ipo": "node ./src/process-ipo.js",
+    "value": "node ./src/process-value-investing.js"
   },
   "dependencies": {
     "axios": "1.9.0",

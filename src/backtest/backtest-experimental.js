@@ -2,9 +2,9 @@
 import dotenv from "dotenv";
 import fs from "fs";
 import yahooFinance from "yahoo-finance2";
-import { LARGE_CAPS } from "./symbols/gettex.js";
-import { getSignals as emaCrossoverSignals } from "./strategies/ema-crossover.js";
-import { getSignals as rsiSignals } from "./strategies/rsi.js";
+import { LARGE_CAPS } from "../symbols/gettex.js";
+import { getSignals as emaCrossoverSignals } from "../strategies/ema-crossover.js";
+import { getSignals as rsiSignals } from "../strategies/rsi.js";
 
 dotenv.config();
 
