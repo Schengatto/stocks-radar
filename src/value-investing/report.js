@@ -1,30 +1,121 @@
 import fs from "fs";
 import PDFDocument from "pdfkit-table";
-import { parseDate } from "../utility/parsers.js";
-import { FUNDAMENTALS_CONFIG, Signal } from "./index.js";
+import yahooFinance from "yahoo-finance2";
+import puppeteer from "puppeteer";
 
-const printList = (doc, title, list) => {
-    doc.font('Helvetica-Bold').text(title);
-    doc.font('Helvetica');
-    if (list.length === 0) {
-        doc.text('- None');
-    } else {
-        list.forEach(item => doc.text(`- ${item}`));
-    }
-    doc.moveDown();
-};
+import { FUNDAMENTALS_CONFIG, Signal } from "./index.js";
+import { parseDate, parseInUSD } from "../utility/parsers.js";
+import { readDataFromFile } from "../utility/file.js";
+
+async function getMonthlyData(symbol) {
+    const to = new Date();
+    const from = new Date();
+    from.setFullYear(to.getFullYear() - 10); // ultimi 10 anni
+
+    const result = await yahooFinance.historical(symbol, {
+        period1: parseDate(from),
+        period2: parseDate(to),
+        interval: '1mo',
+    });
+
+    return result.map(row => ({
+        date: parseDate(row.date),
+        open: row.open,
+        high: row.high,
+        low: row.low,
+        close: row.close
+    }));
+}
+
+function aggregateAnnual(data) {
+    const yearlyData = {};
+
+    data.forEach(d => {
+        const year = new Date(d.date).getFullYear();
+
+        if (!yearlyData[year]) {
+            yearlyData[year] = {
+                date: `${year}-12-31`,
+                open: d.open,
+                high: d.high,
+                low: d.low,
+                close: d.close
+            };
+        } else {
+            yearlyData[year].high = Math.max(yearlyData[year].high, d.high);
+            yearlyData[year].low = Math.min(yearlyData[year].low, d.low);
+            yearlyData[year].close = d.close; // ultima chiusura dell'anno
+        }
+    });
+
+    return Object.values(yearlyData).sort((a, b) => new Date(a.date) - new Date(b.date));
+}
+
+const generateCandlestickChart = async (symbol) => {
+    const monthlyData = await getMonthlyData(symbol);
+    const data = aggregateAnnual(monthlyData);
+
+    const trace = {
+        x: data.map(d => (new Date(d.date)).getFullYear().toString()),
+        open: data.map(d => d.open),
+        high: data.map(d => d.high),
+        low: data.map(d => d.low),
+        close: data.map(d => d.close),
+        type: 'candlestick',
+        name: symbol,
+        increasing: { line: { color: 'green' } },
+        decreasing: { line: { color: 'red' } }
+    };
+
+    const layout = {
+        title: `${symbol} - Price last 10 years`,
+        xaxis: { type: 'category', tickangle: -45, tickformat: '%Y', rangeslider: { visible: false } },
+        yaxis: { title: 'Price' },
+        margin: {
+            t: 50,   // top
+            b: 100,   // bottom
+            l: 50,   // left
+            r: 20    // right
+        }
+    };
+
+    const htmlContent = `
+        <html>
+            <head>
+                <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+            </head>
+            <body>
+                <div id="chart" style="width:800px;height:500px;"></div>
+                <script>
+                    const data = ${JSON.stringify([trace])};
+                    const layout = ${JSON.stringify(layout)};
+                    Plotly.newPlot('chart', data, layout).then(() => {
+                        window.setTimeout(() => window.callPhantom('ready'), 500);
+                    });
+                </script>
+            </body>
+        </html>
+    `;
+
+    const browser = await puppeteer.launch({ headless: true });
+    const page = await browser.newPage();
+    await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
+
+    const chartElement = await page.$('#chart');
+    const buffer = await chartElement.screenshot({ encoding: 'base64' });
+
+    await browser.close();
+
+    return buffer; // base64 string (PNG)
+}
 
 export const generateReport = async (_data) => {
-    let data = _data;
-    if (data) {
-        const rawData = fs.readFileSync(FUNDAMENTALS_CONFIG.dataFilePath, 'utf8');
-        data = JSON.parse(rawData);
-    }
-
+    let data = _data || readDataFromFile(FUNDAMENTALS_CONFIG.dataFilePath);
     data.sort((a, b) => a.name.localeCompare(b.name));
 
     const buySignals = data.filter(x => x.signal === Signal.Positive);
     const sellSignals = data.filter(x => x.signal === Signal.Negative);
+    const noneSignals = data.filter(x => x.signal === Signal.None);
 
     const doc = new PDFDocument({ margin: 50 });
     const today = parseDate(new Date());
@@ -32,48 +123,58 @@ export const generateReport = async (_data) => {
     doc.pipe(fs.createWriteStream(outputPath));
 
     // --- Cover Page ---
-    doc.fontSize(20).font('Helvetica-Bold').text('Value Investing Report', {
-        align: 'center'
-    });
-    doc.fontSize(16).font('Helvetica-Bold').text(today, {
-        align: 'center'
-    });
+    doc.fontSize(20).font('Helvetica-Bold').text('Value Investing Report', { align: 'center' });
+    doc.fontSize(16).font('Helvetica-Bold').text(today, { align: 'center' });
     doc.moveDown(1.5);
 
     doc.fontSize(12).font('Helvetica').text(
-        `This report is automatically generated using a Value Investing approach inspired by Warren Buffett and Benjamin Graham. ` +
-        `The analysis evaluates large-cap companies based on a set of fundamental criteria to identify potentially undervalued opportunities with strong financial health.`,
+        `This report is generated using a modernized Value Investing methodology inspired by Warren Buffett and Benjamin Graham. ` +
+        `Each company is evaluated based on its financial strength, profitability, operational efficiency, and whether the stock appears undervalued relative to its intrinsic value.`,
         { align: 'left' }
     );
     doc.moveDown();
 
-    doc.text(`The methodology follows these core principles:`);
+    doc.text(`The scoring model is based on the following key criteria:`);
     doc.moveDown(0.5);
     doc.list([
-        "A consistent and upward trend in Earnings Per Share (EPS), indicating sustainable growth.",
-        "A Return on Equity (ROE) above 10%, showing efficient use of shareholder capital.",
-        "A Price-to-Earnings (P/E) ratio below 25, favoring reasonably priced stocks.",
-        "A Debt-to-Equity ratio below 2, ensuring a manageable financial structure.",
-        "An operating margin above 10%, reflecting operational efficiency.",
+        "Consistent growth in Earnings Per Share (EPS), indicating durable earning power.",
+        "Return on Invested Capital (ROIC) above 10%, reflecting efficient capital allocation.",
+        "Gross profit margin above 60%, which may suggest a durable competitive advantage.",
+        "Price-to-Free-Cash-Flow (P/FCF) below 15, signaling valuation relative to cash generation.",
         "Positive Free Cash Flow (FCF), confirming the ability to generate excess cash.",
-        "A Current Ratio above 1.5, indicating liquidity and short-term financial strength.",
-        "An Interest Coverage ratio above 3, showing the ability to meet debt obligations.",
-        "A Debt/EBITDA ratio below 3, highlighting manageable leverage."
-    ]);
+        "Low capital expenditure relative to FCF, indicating scalable business operations.",
+        "Dividend payout ratio below 60%, balancing shareholder return and reinvestment.",
+        "Debt-to-Equity ratio below 2, reflecting a conservative capital structure.",
+        "Operating margin above 10%, indicating operational efficiency.",
+        "Current ratio above 1.5, demonstrating short-term financial health.",
+        "Interest coverage above 3, ensuring ability to service debt obligations.",
+        "Debt/EBITDA ratio below 3, supporting sustainable leverage.",
+        "Return on tangible assets, assessing real asset productivity.",
+        "Low proportion of intangibles to total assets (below 20%), favoring asset quality.",
+        "Market price below the Graham Number, a classical fair value benchmark.",
+        "Intrinsic value (based on DCF) above current price, indicating undervaluation.",
+        "EPS compound annual growth rate (CAGR) above 10%.",
+        "Overall balance sheet clarity and consistency."
+    ], {
+        bulletRadius: 1.5,
+        textIndent: 10,
+        bulletIndent: 0,
+        align: 'left'
+    });
     doc.moveDown();
 
     doc.text(
-        `Each company receives a score based on the number of criteria met. A score of 7 or more triggers a POSITIVE signal, ` +
-        `while 3 or fewer triggers a NEGATIVE signal. Intermediate scores are classified as NONE or No Signal.`
+        `Each company is assigned a score based on how many of these criteria are met. A score of 14 or more results in a POSITIVE signal (potential opportunity), ` +
+        `while a score of 5 or fewer results in a NEGATIVE signal. Intermediate scores are considered NEUTRAL.`
     );
     doc.moveDown();
 
     doc.font('Helvetica-Oblique').fillColor('gray').fontSize(10).text(
-        `Note: Data availability may vary depending on the financial sources used. Absence of key data can prevent a full assessment.`
+        `Note: The analysis depends on the availability of up-to-date financial data. Missing data can reduce the completeness of the evaluation.`
     );
     doc.moveDown();
     doc.text(
-        `This report is intended for informational purposes and does not constitute financial advice.`
+        `This report is for informational purposes only and should not be considered financial advice or a recommendation to buy or sell any securities.`
     );
     doc.fillColor('black');
 
@@ -82,25 +183,44 @@ export const generateReport = async (_data) => {
         doc.addPage();
         doc.font('Helvetica-Bold').text("Positive Outlook");
         doc.font('Helvetica');
-        doc.list(buySignals.map(s => s.name));
+        buySignals.forEach(ticker => {
+            doc
+                .fontSize(10)
+                .fillColor('blue')
+                .text(`${ticker.name}`, {
+                    goTo: `${ticker.symbol}-detail`,
+                    underline: true
+                });
+        });
     }
 
     if (sellSignals.length) {
-         // --- Sell Signals Page ---
+        // --- Sell Signals Page ---
         doc.addPage();
         doc.font('Helvetica-Bold').text("Negative Outlook");
         doc.font('Helvetica');
-        doc.list(sellSignals.map(s => s.name));
+        sellSignals.forEach(ticker => {
+            doc
+                .fontSize(10)
+                .fillColor('blue')
+                .text(`${ticker.name}`, {
+                    goTo: `${ticker.symbol}-detail`,
+                    underline: true,
+                });
+        });
     }
 
     // --- Detailed Company Analysis ---
     doc.addPage();
 
     const writeEntry = async (entry) => {
-        doc.fontSize(16).text(`${entry.name}`, { underline: true });
-        doc.moveDown(0.5);
-        doc.fontSize(10).text(`Symbol: ${entry.symbol} | Signal: ${entry.signal.toUpperCase()} | RSI (Monthly timeframe): ${entry.rsi}`);
-        doc.moveDown();
+        const startX = doc.x;
+        const companySummary = entry.companySummary;
+        doc.fontSize(16).text(`${entry.name} (${entry.symbol})`, { underline: true, destination: `${entry.symbol}-detail` });
+        doc.fontSize(8).text(`Sector: ${companySummary?.sector} | Industry: ${companySummary?.industry}`);
+        doc.moveDown(0.3);
+        doc.fontSize(6).text(companySummary?.longBusinessSummary);
+        doc.moveDown(1);
 
         if (entry.reasons) {
             const maxLen = Math.max(
@@ -121,9 +241,9 @@ export const generateReport = async (_data) => {
             await doc.table(tableData, {
                 width: doc.page.width - doc.page.margins.left - doc.page.margins.right,
                 columnSpacing: 3,
-                prepareHeader: () => doc.font('Helvetica-Bold').fontSize(9),
+                prepareHeader: () => doc.font('Helvetica-Bold').fontSize(7),
                 prepareRow: (row, i) => {
-                    doc.font('Helvetica').fontSize(9);
+                    doc.font('Helvetica').fontSize(7);
                     row.options = { padding: 2 };
                 },
             });
@@ -146,11 +266,11 @@ export const generateReport = async (_data) => {
                 rows: [
                     ["P/E Ratio", f.pe?.toFixed(2) ?? 'N/A'],
                     ["ROE", f.roe?.toFixed(2) ?? 'N/A'],
-                    ["Revenue", f.revenue?.toLocaleString() ?? 'N/A'],
-                    ["Net Income", f.netIncome?.toLocaleString() ?? 'N/A'],
-                    ["Free Cash Flow", f.freeCashFlow?.toLocaleString() ?? 'N/A'],
-                    ["Total Liabilities", f.totalLiabilities?.toLocaleString() ?? 'N/A'],
-                    ["Total Equity", f.totalEquity?.toLocaleString() ?? 'N/A'],
+                    ["Revenue", f.revenue ? parseInUSD(f.revenue) : 'N/A'],
+                    ["Net Income", f.netIncome ? parseInUSD(f.netIncome) : 'N/A'],
+                    ["Free Cash Flow", f.freeCashFlow ? parseInUSD(f.freeCashFlow) : 'N/A'],
+                    ["Total Liabilities", f.totalLiabilities ? parseInUSD(f.totalLiabilities) : 'N/A'],
+                    ["Total Equity", f.totalEquity ? parseInUSD(f.totalEquity) : 'N/A'],
                     ["Current Ratio", f.currentRatio?.toFixed(2) ?? 'N/A'],
                     ["Interest Coverage", f.interestCoverage?.toFixed(2) ?? 'N/A'],
                     ["Debt/EBITDA", !f.debtToEBITDA || isNaN(f.debtToEBITDA) ? "N/A" : f.debtToEBITDA.toFixed(2)]
@@ -164,44 +284,54 @@ export const generateReport = async (_data) => {
                 y: tableStartY,
                 width: (doc.page.width - doc.page.margins.left - doc.page.margins.right) / 2 - 10,
                 columnSpacing: 3,
-                prepareHeader: () => doc.font('Helvetica-Bold').fontSize(9),
+                prepareHeader: () => doc.font('Helvetica-Bold').fontSize(7),
                 prepareRow: (row, i) => {
-                    doc.font('Helvetica').fontSize(9);
+                    doc.font('Helvetica').fontSize(7);
                     row.options = { padding: 2 };
                 },
             });
 
-            if (entry.news?.length) {
-                doc.font('Helvetica-Bold').fontSize(10).text('Latest news:');
-                doc.moveDown(0.5);
+            const chartWidth = 280;
+            const chartHeight = 150;
 
-                entry.news.forEach((item, idx) => {
-                    doc.font('Helvetica-Bold', 9)
-                        .text(`• ${parseDate(item.datetime)} | [${item.sentiment.toUpperCase()}] | ${item.headline}`);
-                    doc.font('Helvetica').fontSize(9);
-
-                    if (item.summary) doc.text(item.summary);
-                    if (item.url) doc.fillColor('blue').text(item.url, { underline: true });
-                    doc.fillColor('black');
-
-                    if (idx < entry.news.length - 1) doc.moveDown(1);
-                });
-
-                doc.moveDown(1);
+            try {
+                const base64 = await generateCandlestickChart(entry.symbol);
+                const chartBuffer = Buffer.from(base64, 'base64');
+                doc.image(chartBuffer, xRight, startY, { fit: [chartWidth, chartHeight] });
+            } catch (e) {
+                console.error(e);
             }
 
+            const yAfterChart = startY + 140;
             const epsList = f.eps ?? [];
             if (epsList.length > 0) {
-                const epsX = xRight;
-                const epsY = tableStartY;
-
-                doc.font('Helvetica-Bold').fontSize(9).text('EPS (Annual):', epsX, epsY);
-                doc.font('Helvetica').fontSize(9);
-                epsList.forEach((e, i) => {
-                    const line = `• ${e.year ?? 'N/A'}: ${e.value ?? 'N/A'}`;
-                    doc.text(line, epsX, epsY + 15 + i * 12);
-                });
+                doc.font('Helvetica-Bold').fontSize(7).text('EPS (Annual):', xRight, yAfterChart);
+                doc.font('Helvetica').fontSize(7);
+                const eps = epsList.reverse().map((e) => `${e.year.split("-")[0] ?? 'N/A'}: ${e.value ? Number(e.value).toFixed(2) : 'N/A'}`);
+                doc.text(eps.join("  |  "), xRight, yAfterChart + 10);
             }
+
+            doc.moveDown(1);
+        }
+
+        doc.moveDown(1);
+        doc.font('Helvetica-Bold').fontSize(10).text(`Score: ${entry.score} | Signal: ${entry.signal.toUpperCase()} | Current Price: $ ${entry.currentPrice} | RSI (Monthly timeframe): ${entry.rsi}`, startX);
+        doc.moveDown(2);
+
+        if (entry.news?.length) {
+            doc.font('Helvetica-Bold').fontSize(8).text('Latest news:', startX);
+            doc.moveDown(0.5);
+
+            entry.news.forEach((item, idx) => {
+                doc.font('Helvetica-Bold', 7)
+                    .text(`• ${parseDate(item.datetime)} | [${item.sentiment.toUpperCase()}] | ${item.headline}`);
+                doc.font('Helvetica').fontSize(7);
+                // if (item.summary) doc.text(item.summary);
+                if (item.url) doc.fillColor('blue').text(item.url, { underline: true });
+                doc.fillColor('black');
+
+                if (idx < entry.news.length - 1) doc.moveDown(1);
+            });
 
             doc.moveDown(1);
         }
@@ -209,7 +339,7 @@ export const generateReport = async (_data) => {
     doc.moveDown(2);
 
     let entryCountOnPage = 0;
-    for (let entry of data) {
+    for (let entry of [...buySignals, ...sellSignals, ...noneSignals]) {
         if (entryCountOnPage === 1) {
             doc.addPage();
             entryCountOnPage = 0;

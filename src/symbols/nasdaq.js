@@ -757,7 +757,7 @@ export const NASDAQ_LARGE_CAPS = [
     },
     {
         "name": "Ryanair Holdings plc",
-        "symbol": "RYAAY"
+        "symbol": "RYAOF"
     },
     {
         "name": "Ericsson",
@@ -802,10 +802,6 @@ export const NASDAQ_LARGE_CAPS = [
     {
         "name": "Insmed Incorporated",
         "symbol": "INSM"
-    },
-    {
-        "name": "Fox Corporation",
-        "symbol": "FOXA"
     },
     {
         "name": "Neurocrine Biosciences, Inc.",
@@ -992,16 +988,8 @@ export const NASDAQ_LARGE_CAPS = [
         "symbol": "ONC"
     },
     {
-        "name": "News Corporation",
-        "symbol": "NWSA"
-    },
-    {
         "name": "First Citizens BancShares, Inc.",
         "symbol": "FCNCA"
-    },
-    {
-        "name": "Liberty Media Corporation - Series A Liberty Formula One",
-        "symbol": "FWONA"
     },
     {
         "name": "Ferrovial SE",
@@ -1012,13 +1000,605 @@ export const NASDAQ_LARGE_CAPS = [
         "symbol": "MORN"
     },
     {
-        "name": "Fifth Third Bancorp - Depositary Share repstg 1/1000th Ownership Interest Perp Pfd Series I",
-        "symbol": "FITBI"
+        "name": "XTRA Bitcoin Inc.",
+        "symbol": "CBTC"
     },
     {
-        "name": "Arch Capital Group Ltd. - Depositary Shares Each Representing 1/1,000th Interest in a Share of5.45% Non-Cumulative Preferred Shares, Series F",
-        "symbol": "ACGLO"
-    }
+        "name": "VanEck Ethereum ETF",
+        "symbol": "ETHV"
+    },
+    {
+        "name": "Mid-America Apartment Communities, Inc.",
+        "symbol": "MAA"
+    },
+    {
+        "name": "SAP SE",
+        "symbol": "SAPGF"
+    },
+    {
+        "name": "Xiaomi Corporation",
+        "symbol": "XIACF"
+    },
+    {
+        "name": "Bayer Aktiengesellschaft",
+        "symbol": "BAYRY"
+    },
+    {
+        "name": "Siemens Aktiengesellschaft",
+        "symbol": "SMAWF"
+    },
+    {
+        "name": "Bayerische Motoren Werke Aktiengesellschaft",
+        "symbol": "BAMXF"
+    },
+    {
+        "name": "Hims & Hers Health, Inc.",
+        "symbol": "HIMS"
+    },
+    {
+        "name": "Allianz SE",
+        "symbol": "ALIZF"
+    },
+    {
+        "name": "NIKE, Inc.",
+        "symbol": "NKE"
+    },
+    {
+        "name": "Porsche Automobil Holding SE",
+        "symbol": "POAHY"
+    },
+    {
+        "name": "ASML Holding N.V.",
+        "symbol": "ASMLF"
+    },
+    {
+        "name": "Deutsche Telekom AG",
+        "symbol": "DTEGY"
+    },
+    {
+        "name": "Eli Lilly and Company",
+        "symbol": "LLY"
+    },
+    {
+        "name": "Münchener Rückversicherungs-Gesellschaft Aktiengesellschaft in München",
+        "symbol": "MURGY"
+    },
+    {
+        "name": "AXA SA",
+        "symbol": "AXAHF"
+    },
+    {
+        "name": "adidas AG",
+        "symbol": "ADDDF"
+    },
+    {
+        "name": "UnitedHealth Group Incorporated",
+        "symbol": "UNH"
+    },
+    {
+        "name": "BASF SE",
+        "symbol": "BFFAF"
+    },
+    {
+        "name": "Carnival Corporation & plc",
+        "symbol": "CCL"
+    },
+    {
+        "name": "Republic Services, Inc.",
+        "symbol": "RSG"
+    },
+    {
+        "name": "Singapore Technologies Engineering Ltd",
+        "symbol": "SGGKY"
+    },
+    {
+        "name": "The TJX Companies, Inc.",
+        "symbol": "TJX"
+    },
+    {
+        "name": "TotalEnergies SE",
+        "symbol": "TTFNF"
+    },
+    {
+        "name": "ENN Energy Holdings Limited",
+        "symbol": "XNGSF"
+    },
+    {
+        "name": "Paycom Software, Inc.",
+        "symbol": "PAYC"
+    },
+    {
+        "name": "Universal Music Group N.V.",
+        "symbol": "UMGNF"
+    },
+    {
+        "name": "SJM Holdings Limited",
+        "symbol": "SJMHF"
+    },
+    {
+        "name": "Aker BP ASA",
+        "symbol": "AKRBF"
+    },
+    {
+        "name": "ASM International NV",
+        "symbol": "ASMXF"
+    },
+    {
+        "name": "Itaú Unibanco Holding S.A.",
+        "symbol": "ITUB"
+    },
+    {
+        "name": "DRDGOLD Limited",
+        "symbol": "DRDGF"
+    },
+    {
+        "name": "Evolution AB (publ)",
+        "symbol": "EVGGF"
+    },
+    {
+        "name": "Hua Hong Semiconductor Limited",
+        "symbol": "HHUSF"
+    },
+    {
+        "name": "Trane Technologies plc",
+        "symbol": "TT"
+    },
+    {
+        "name": "Bosideng International Holdings Limited",
+        "symbol": "BSDGY"
+    },
+    {
+        "name": "PT Indo Tambangraya Megah Tbk",
+        "symbol": "PTIZF"
+    },
+    {
+        "name": "Reckitt Benckiser Group plc",
+        "symbol": "RBGPF"
+    },
+    {
+        "name": "Visa Inc.",
+        "symbol": "V"
+    },
+    {
+        "name": "Cardinal Health, Inc.",
+        "symbol": "CAH"
+    },
+    {
+        "name": "Celestica Inc.",
+        "symbol": "CLS"
+    },
+    {
+        "name": "Cathay Pacific Airways Limited",
+        "symbol": "CPCAY"
+    },
+    {
+        "name": "Cenovus Energy Inc.",
+        "symbol": "CVE"
+    },
+    {
+        "name": "The Clorox Company",
+        "symbol": "CLX"
+    },
+    {
+        "name": "Dometic Group AB (publ)",
+        "symbol": "DTCGF"
+    },
+    {
+        "name": "SCREEN Holdings Co., Ltd.",
+        "symbol": "DINRF"
+    },
+    {
+        "name": "Denka Company Limited",
+        "symbol": "DENKF"
+    },
+    {
+        "name": "DENSO Corporation",
+        "symbol": "DNZOF"
+    },
+    {
+        "name": "Daimler Truck Holding AG",
+        "symbol": "DTGHF"
+    },
+    {
+        "name": "Alcon Inc.",
+        "symbol": "ALC"
+    },
+    {
+        "name": "Corteva, Inc.",
+        "symbol": "CTVA"
+    },
+    {
+        "name": "China Tower Corporation Limited",
+        "symbol": "CHWRF"
+    },
+    {
+        "name": "Afry AB",
+        "symbol": "AFXXF"
+    },
+    {
+        "name": "BioArctic AB (publ)",
+        "symbol": "BRCTF"
+    },
+    {
+        "name": "Bankinter, S.A.",
+        "symbol": "BKNIY"
+    },
+    {
+        "name": "Truist Financial Corporation",
+        "symbol": "TFC"
+    },
+    {
+        "name": "Bolsa Mexicana de Valores, S.A.B. de C.V.",
+        "symbol": "BOMXF"
+    },
+    {
+        "name": "BCE Inc.",
+        "symbol": "BCE"
+    },
+    {
+        "name": "Banco de Sabadell, S.A.",
+        "symbol": "BNDSF"
+    },
+    {
+        "name": "Guidewire Software, Inc.",
+        "symbol": "GWRE"
+    },
+    {
+        "name": "Japan Airport Terminal Co., Ltd.",
+        "symbol": "JAIRF"
+    },
+    {
+        "name": "Penumbra, Inc.",
+        "symbol": "PEN"
+    },
+    {
+        "name": "Evolution Mining Limited",
+        "symbol": "CAHPF"
+    },
+    {
+        "name": "West Japan Railway Company",
+        "symbol": "WJRYF"
+    },
+    {
+        "name": "Wesfarmers Limited",
+        "symbol": "WFAFF"
+    },
+    {
+        "name": "Demant A/S",
+        "symbol": "WILYY"
+    },
+    {
+        "name": "Walmart Inc.",
+        "symbol": "WMT"
+    },
+    {
+        "name": "Woolworths Holdings Limited",
+        "symbol": "WLWHF"
+    },
+    {
+        "name": "W. R. Berkley Corporation",
+        "symbol": "WRB"
+    },
+    {
+        "name": "George Weston Limited",
+        "symbol": "WNGRF"
+    },
+    {
+        "name": "Wynn Resorts, Limited",
+        "symbol": "WYNN"
+    },
+    {
+        "name": "Canadian Pacific Kansas City Limited",
+        "symbol": "CP"
+    },
+    {
+        "name": "CarMax, Inc.",
+        "symbol": "KMX"
+    },
+    {
+        "name": "Suntory Beverage & Food Limited",
+        "symbol": "STBFY"
+    },
+    {
+        "name": "Tokai Carbon Co., Ltd.",
+        "symbol": "TKCBF"
+    },
+    {
+        "name": "Nippon Kayaku Co., Ltd.",
+        "symbol": "NPKYF"
+    },
+    {
+        "name": "Nippon Carbon Co., Ltd.",
+        "symbol": "NCRBF"
+    },
+    {
+        "name": "NTT DATA Group Corporation",
+        "symbol": "NTDTY"
+    },
+    {
+        "name": "IRPC Public Company Limited",
+        "symbol": "IRPSY"
+    },
+    {
+        "name": "OmniAb, Inc.",
+        "symbol": "OABI"
+    },
+    {
+        "name": "ORIX Corporation",
+        "symbol": "ORXCF"
+    },
+    {
+        "name": "OMV Aktiengesellschaft",
+        "symbol": "OMVJF"
+    },
+    {
+        "name": "Ono Pharmaceutical Co., Ltd.",
+        "symbol": "OPHLF"
+    },
+    {
+        "name": "Performance Food Group Company",
+        "symbol": "PFGC"
+    },
+    {
+        "name": "D-Wave Quantum Inc.",
+        "symbol": "QBTS"
+    },
+    {
+        "name": "thyssenkrupp AG",
+        "symbol": "TYEKF"
+    },
+    {
+        "name": "UiPath Inc.",
+        "symbol": "PATH"
+    },
+    {
+        "name": "Hensoldt AG",
+        "symbol": "HNSDF"
+    },
+    {
+        "name": "Element Solutions Inc",
+        "symbol": "ESI"
+    },
+    {
+        "name": "Teleperformance SE",
+        "symbol": "TLPFY"
+    },
+    {
+        "name": "Boyaa Interactive International Limited",
+        "symbol": "BOYAF"
+    },
+    {
+        "name": "Airtel Africa Plc",
+        "symbol": "AAFRF"
+    },
+    {
+        "name": "The Cheesecake Factory Incorporated",
+        "symbol": "CAKE"
+    },
+    {
+        "name": "Eastman Chemical Company",
+        "symbol": "EMN"
+    },
+    {
+        "name": "Alcoa Corporation",
+        "symbol": "AA"
+    },
+    {
+        "name": "CRISPR Therapeutics AG",
+        "symbol": "CRSP"
+    },
+    {
+        "name": "Dropbox, Inc.",
+        "symbol": "DBX"
+    },
+    {
+        "name": "YETI Holdings, Inc.",
+        "symbol": "YETI"
+    },
+    {
+        "name": "Summerset Group Holdings Limited",
+        "symbol": "SMGRF"
+    },
+    {
+        "name": "Mongolian Mining Corporation",
+        "symbol": "MOGLF"
+    },
+    {
+        "name": "Beazley plc",
+        "symbol": "BZLYF"
+    },
+    {
+        "name": "APA Corporation",
+        "symbol": "APA"
+    },
+    {
+        "name": "Daiwa Industries Ltd.",
+        "symbol": "DAWIF"
+    },
+    {
+        "name": "Teradata Corporation",
+        "symbol": "TDC"
+    },
+    {
+        "name": "Clariant AG",
+        "symbol": "CLZNY"
+    },
+    {
+        "name": "Calix, Inc.",
+        "symbol": "CALX"
+    },
+    {
+        "name": "Choice Hotels International, Inc.",
+        "symbol": "CHH"
+    },
+    {
+        "name": "Nel ASA",
+        "symbol": "NLLSF"
+    },
+    {
+        "name": "Drax Group plc",
+        "symbol": "DRXGF"
+    },
+    {
+        "name": "ABG Sundal Collier Holding ASA",
+        "symbol": "ABGSF"
+    },
+    {
+        "name": "De Grey Mining Limited",
+        "symbol": "DGMLF"
+    },
+    {
+        "name": "Adtalem Global Education Inc.",
+        "symbol": "ATGE"
+    },
+    {
+        "name": "DENTSPLY SIRONA Inc.",
+        "symbol": "XRAY"
+    },
+    {
+        "name": "Pirelli & C. S.p.A.",
+        "symbol": "PLLIF"
+    },
+    {
+        "name": "Scholar Rock Holding Corporation",
+        "symbol": "SRRK"
+    },
+    {
+        "name": "Auto Trader Group plc",
+        "symbol": "ATDRF"
+    },
+    {
+        "name": "Ascletis Pharma Inc.",
+        "symbol": "ASCLF"
+    },
+    {
+        "name": "Valmet Oyj",
+        "symbol": "VOYJF"
+    },
+    {
+        "name": "Wyndham Hotels & Resorts, Inc.",
+        "symbol": "WH"
+    },
+    {
+        "name": "Banque Cantonale Vaudoise",
+        "symbol": "BQCNF"
+    },
+    {
+        "name": "Boralex Inc.",
+        "symbol": "BRLXF"
+    },
+    {
+        "name": "Bucher Industries AG",
+        "symbol": "BCHHF"
+    },
+    {
+        "name": "Baytex Energy Corp.",
+        "symbol": "BTE"
+    },
+    {
+        "name": "Yangzijiang Shipbuilding (Holdings) Ltd.",
+        "symbol": "YSHLF"
+    },
+    {
+        "name": "The Boston Beer Company, Inc.",
+        "symbol": "SAM"
+    },
+    {
+        "name": "Brickworks Limited",
+        "symbol": "BRKWF"
+    },
+    {
+        "name": "Bendigo and Adelaide Bank Limited",
+        "symbol": "BXRBF"
+    },
+    {
+        "name": "Envista Holdings Corporation",
+        "symbol": "NVST"
+    },
+    {
+        "name": "Akero Therapeutics, Inc.",
+        "symbol": "AKRO"
+    },
+    {
+        "name": "Lamb Weston Holdings, Inc.",
+        "symbol": "LW"
+    },
+    {
+        "name": "Integer Holdings Corporation",
+        "symbol": "ITGR"
+    },
+    {
+        "name": "Infrastrutture Wireless Italiane S.p.A.",
+        "symbol": "IFSUF"
+    },
+    {
+        "name": "Wendel",
+        "symbol": "WNDLF"
+    },
+    {
+        "name": "Graham Holdings Company",
+        "symbol": "GHC"
+    },
+    {
+        "name": "Altarea SCA",
+        "symbol": "ATRRF"
+    },
+    {
+        "name": "NCAB GROUP AB",
+        "symbol": "NCABF"
+    },
+    {
+        "name": "CBIZ, Inc.",
+        "symbol": "CBZ"
+    },
+    {
+        "name": "Acadia Healthcare Company, Inc.",
+        "symbol": "ACHC"
+    },
+    {
+        "name": "VNV Global AB (publ)",
+        "symbol": "VSTKF"
+    },
+    {
+        "name": "KRUK Spólka Akcyjna",
+        "symbol": "KRKKF"
+    },
+    {
+        "name": "Sylvamo Corporation",
+        "symbol": "SLVM"
+    },
+    {
+        "name": "ATCO Ltd.",
+        "symbol": "ACLLF"
+    },
+    {
+        "name": "NOV Inc.",
+        "symbol": "NOV"
+    },
+    {
+        "name": "Clearway Energy, Inc.",
+        "symbol": "CWEN"
+    },
+    {
+        "name": "OGE Energy Corp.",
+        "symbol": "OGE"
+    },
+    {
+        "name": "Shui On Land Limited",
+        "symbol": "SOLLF"
+    },
+    {
+        "name": "Old National Bancorp",
+        "symbol": "ONB"
+    },
+    { name: "NOVO NORDISK A/S", symbol: "NVO" },
+    { name: "BYD COMPANY LTD", symbol: "BYDDY" },
+    { name: "Rheinmetall AG", symbol: "RNMBF" },
+    { name: "SIEMENS ENERGY AG", symbol: "SMEGF" },
+    { name: "INFINEON TECHNOLOGIES AG", symbol: "IFNNF" },
+    { name: "VOLKSWAGEN AG", symbol: "VLKAF" },
+    { name: "TAIWAN SEMICONDUCTOR MANUFACTURING CO LTD", symbol: "TSMWF" },
+    { name: "FINCANTIERI S.P.A.", symbol: "FNCNF" },
 ];
 
 export const NASDAQ_MID_CAPS = [
@@ -2411,10 +2991,6 @@ export const NASDAQ_MID_CAPS = [
         "symbol": "MMSI"
     },
     {
-        "name": "Atlanta Braves Holdings, Inc. - Series A",
-        "symbol": "BATRA"
-    },
-    {
         "name": "Littelfuse, Inc.",
         "symbol": "LFUS"
     },
@@ -2553,10 +3129,6 @@ export const NASDAQ_MID_CAPS = [
     {
         "name": "Independent Bank Corp.",
         "symbol": "INDB"
-    },
-    {
-        "name": "Liberty Media Corporation - Series A Liberty Live",
-        "symbol": "LLYVA"
     },
     {
         "name": "Eastern Bankshares, Inc.",
@@ -2749,5 +3321,5 @@ export const NASDAQ_MID_CAPS = [
     {
         "name": "Enstar Group Limited - Depository Shares 7.00% Perpetual Non-Cumulative Preference Shares, Series E",
         "symbol": "ESGRO"
-    }
+    },
 ];

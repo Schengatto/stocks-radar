@@ -22,3 +22,5 @@ export const parseDate = (input) => {
 
     return `${year}-${month}-${day}`;
 }
+
+export const parseInUSD = (amount) => `$ ${amount?.toLocaleString() || 0}`;
