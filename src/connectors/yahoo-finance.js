@@ -45,3 +45,32 @@ export const fetchCompanyDataFromYahoo = async (symbol) => {
         return null;
     }
 };
+
+
+/**
+ * Returns the company description for a given stock symbol.
+ * @param {string} symbol - The stock symbol (e.g., 'AAPL')
+ * @returns {Promise<string|null>} - The company description, or null if not found
+ */
+export async function getCompanySummary(symbol) {
+    try {
+        const data = await yahooFinance.quoteSummary(symbol, {
+            modules: ['price', 'assetProfile']
+        });
+
+        const profile = data?.assetProfile;
+        const price = data?.price;
+
+        return {
+            name: price?.longName ?? price?.shortName ?? "",
+            sector: profile?.sector ?? null,
+            industry: profile?.industry ?? null,
+            longBusinessSummary: profile?.longBusinessSummary ?? null,
+            marketcap: price?.marketCap ?? null,
+            currentPrice: price?.regularMarketPreviousClose ?? null,
+        };
+    } catch (error) {
+        console.error(`Error retrieving company description for ${symbol}:`, error.message);
+        return { sector: null, industry: null, longBusinessSummary: null };
+    }
+}

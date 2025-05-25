@@ -1,4 +1,4 @@
-const YAHOO_TO_FINNHUB_MAPPING = {
+export const YAHOO_TO_FINNHUB_MAPPING = {
     "ETH-EUR": "CBTC",
     "BTC-EUR": "ETHV",
     "SOL-EUR": "TWNSF",

@@ -1,5 +1,60 @@
 import { Signal } from "./index.js";
 
+const estimateIntrinsicValue = ({ latestFCF, metrics, pricePerShare }, options = {}) => {
+    const {
+        growthRate = 0.10,
+        discountRate = 0.10,
+        terminalGrowth = 0.02,
+        years = 5
+    } = options;
+
+    const { sharesOutstanding, marketCap } = metrics;
+
+    if (!latestFCF || latestFCF <= 0 || !sharesOutstanding || sharesOutstanding <= 0 || discountRate <= terminalGrowth) {
+        return { value: NaN, message: "Invalid input data" };
+    }
+
+    let totalDCF = 0;
+    for (let year = 1; year <= years; year++) {
+        const projectedFCF = latestFCF * Math.pow(1 + growthRate, year);
+        totalDCF += projectedFCF / Math.pow(1 + discountRate, year);
+    }
+
+    const lastFCF = latestFCF * Math.pow(1 + growthRate, years);
+    const terminalValue = (lastFCF * (1 + terminalGrowth)) / (discountRate - terminalGrowth);
+    totalDCF += terminalValue / Math.pow(1 + discountRate, years);
+
+    const intrinsicValuePerShare = totalDCF / sharesOutstanding;
+
+    const marketPricePerShare = pricePerShare !== undefined
+        ? pricePerShare
+        : marketCap && sharesOutstanding
+            ? marketCap / sharesOutstanding
+            : NaN;
+
+    const marginOfSafety = isNaN(marketPricePerShare)
+        ? NaN
+        : (1 - marketPricePerShare / intrinsicValuePerShare) * 100;
+
+    return {
+        intrinsicValuePerShare,
+        marketPricePerShare,
+        marginOfSafety,
+        signal: isNaN(marginOfSafety)
+            ? 'Unknown'
+            : marginOfSafety >= 30
+                ? 'Undervalued'
+                : marginOfSafety <= -20
+                    ? 'Overvalued'
+                    : 'Fairly valued'
+    };
+};
+
+const calculateCAGR = (start, end, years) => {
+    if (start <= 0 || end <= 0 || years <= 0) return NaN;
+    return Math.pow(end / start, 1 / years) - 1;
+};
+
 export function analyzeFundamentals(data) {
     const {
         overview,
@@ -7,7 +62,9 @@ export function analyzeFundamentals(data) {
         balanceSheet,
         incomeStatement,
         cashFlowStatement,
-        metrics
+        metrics,
+        pricePerShare,
+        latestFCF,
     } = data;
 
     const reasons = {
@@ -17,10 +74,9 @@ export function analyzeFundamentals(data) {
     };
 
     let score = 0;
-    const maxScore = 9;
+    const maxScore = 18;
 
     try {
-        // EPS trend (non costante)
         const epsList = (earnings?.annualEarnings || [])
             .map(e => parseFloat(e.reportedEPS))
             .filter(eps => !isNaN(eps));
@@ -28,39 +84,63 @@ export function analyzeFundamentals(data) {
         if (!hasEPS) {
             reasons.unavailable.push("EPS data insufficient");
         } else {
-            const first = epsList[0];
-            const last = epsList[epsList.length - 1];
+            const first = epsList[epsList.length - 1];
+            const last = epsList[0];
             if (last > first) {
                 reasons.passed.push("EPS shows upward trend");
                 score++;
             } else {
                 reasons.failed.push("EPS does not show upward trend");
             }
+
+            // CAGR on EPS
+            const epsCAGR = calculateCAGR(first, last, epsList.length - 1);
+            if (!isNaN(epsCAGR) && epsCAGR > 0.10) {
+                reasons.passed.push(`EPS CAGR > 10% (${(epsCAGR * 100).toFixed(2)}%)`);
+                score++;
+            }
         }
 
-        // ROE > 10%
-        const roe = parseFloat(overview?.roe ?? "NaN");
-        if (isNaN(roe)) {
-            reasons.unavailable.push("ROE not available");
-        } else if (roe >= 0.10) {
-            reasons.passed.push(`ROE acceptable (${roe.toFixed(2)})`);
+        const roic = parseFloat(metrics?.roic ?? "NaN");
+        if (isNaN(roic)) {
+            reasons.unavailable.push("ROIC not available");
+        } else if (roic > 0.10) {
+            reasons.passed.push(`ROIC acceptable (${roic.toFixed(2)})`);
             score++;
         } else {
-            reasons.failed.push(`ROE too low (${roe.toFixed(2)})`);
+            reasons.failed.push(`ROIC too low (${roic.toFixed(2)})`);
         }
 
-        // P/E < 25
-        const pe = parseFloat(overview?.peNormalizedAnnual ?? "NaN");
-        if (isNaN(pe)) {
-            reasons.unavailable.push("P/E ratio not available");
-        } else if (pe < 25) {
-            reasons.passed.push(`P/E is reasonable (${pe.toFixed(2)})`);
+        const grossMargin = parseFloat(metrics?.grossProfitMargin ?? "NaN");
+        if (!isNaN(grossMargin)) {
+            if (grossMargin > 0.60) {
+                reasons.passed.push(`Strong gross margin (${(grossMargin * 100).toFixed(1)}%) — potential moat`);
+                score++;
+            } else {
+                reasons.failed.push(`Low gross margin (${(grossMargin * 100).toFixed(1)}%)`);
+            }
+        }
+
+        const pfcf = parseFloat(metrics?.pfcfRatio ?? "NaN");
+        if (isNaN(pfcf)) {
+            reasons.unavailable.push("P/FCF ratio not available");
+        } else if (pfcf < 15) {
+            reasons.passed.push(`P/FCF is reasonable (${pfcf.toFixed(2)})`);
             score++;
         } else {
-            reasons.failed.push(`P/E too high (${pe.toFixed(2)})`);
+            reasons.failed.push(`P/FCF too high (${pfcf.toFixed(2)})`);
         }
 
-        // Debt < 2x Equity
+        const dividendPayout = parseFloat(metrics?.dividendPayoutRatio ?? "NaN");
+        if (!isNaN(dividendPayout)) {
+            if (dividendPayout > 0 && dividendPayout < 60) {
+                reasons.passed.push(`Dividend payout ratio is healthy (${dividendPayout.toFixed(2)}%)`);
+                score++;
+            } else {
+                reasons.failed.push(`Dividend payout ratio too high (${dividendPayout.toFixed(2)}%)`);
+            }
+        }
+
         const bs = balanceSheet?.annualReports?.[0];
         const debt = bs ? parseFloat(bs.totalLiabilities) : NaN;
         const equity = bs ? parseFloat(bs.totalShareholderEquity) : NaN;
@@ -73,14 +153,13 @@ export function analyzeFundamentals(data) {
             reasons.failed.push("Debt is too high relative to equity");
         }
 
-        // Operating Margin > 10%
         const inc = incomeStatement?.annualReports?.[0];
-        const netIncome = inc ? parseFloat(inc.netIncome) : NaN;
+        const operatingIncome = inc ? parseFloat(inc.operatingIncome) : NaN;
         const revenue = inc ? parseFloat(inc.totalRevenue) : NaN;
-        if (!inc || isNaN(netIncome) || isNaN(revenue) || revenue <= 0) {
-            reasons.unavailable.push("Net income or revenue not available");
+        if (!inc || isNaN(operatingIncome) || isNaN(revenue) || revenue <= 0) {
+            reasons.unavailable.push("Operating income or revenue not available");
         } else {
-            const operatingMargin = netIncome / revenue;
+            const operatingMargin = operatingIncome / revenue;
             if (operatingMargin > 0.10) {
                 reasons.passed.push(`Operating margin > 10% (${(operatingMargin * 100).toFixed(1)}%)`);
                 score++;
@@ -89,19 +168,31 @@ export function analyzeFundamentals(data) {
             }
         }
 
-        // Free Cash Flow > 0
         const cf = cashFlowStatement?.annualReports?.[0];
         const fcf = cf ? parseFloat(cf.freeCashFlow) : NaN;
+        const capex = cf ? parseFloat(cf.capitalExpenditure) : NaN;
         if (isNaN(fcf)) {
             reasons.unavailable.push("Free Cash Flow not available");
-        } else if (fcf > 0) {
-            reasons.passed.push("Free Cash Flow is positive");
-            score++;
         } else {
-            reasons.failed.push("Free Cash Flow is negative");
+            if (fcf > 0) {
+                reasons.passed.push("Free Cash Flow is positive");
+                score++;
+            } else {
+                reasons.failed.push("Free Cash Flow is negative");
+            }
+
+            // CapEx intensity
+            if (!isNaN(capex) && capex !== 0) {
+                const capexToFCF = Math.abs(capex / fcf);
+                if (capexToFCF < 0.5) {
+                    reasons.passed.push("CapEx intensity is low (CapEx/FCF < 50%)");
+                    score++;
+                } else {
+                    reasons.failed.push("CapEx intensity is high");
+                }
+            }
         }
 
-        // Current Ratio > 1.5
         const currentRatio = parseFloat(metrics?.currentRatio ?? "NaN");
         if (isNaN(currentRatio)) {
             reasons.unavailable.push("Current Ratio not available");
@@ -112,7 +203,6 @@ export function analyzeFundamentals(data) {
             reasons.failed.push(`Current Ratio too low (${currentRatio.toFixed(2)})`);
         }
 
-        // Interest Coverage > 3
         const interestCoverage = parseFloat(metrics?.interestCoverage ?? "NaN");
         if (isNaN(interestCoverage)) {
             reasons.unavailable.push("Interest Coverage not available");
@@ -123,7 +213,6 @@ export function analyzeFundamentals(data) {
             reasons.failed.push(`Interest Coverage too low (${interestCoverage.toFixed(2)})`);
         }
 
-        // Debt/EBITDA < 3
         const debtToEBITDA = parseFloat(metrics?.debtToEBITDA ?? "NaN");
         if (isNaN(debtToEBITDA)) {
             reasons.unavailable.push("Debt/EBITDA not available");
@@ -134,23 +223,58 @@ export function analyzeFundamentals(data) {
             reasons.failed.push(`Debt/EBITDA too high (${debtToEBITDA.toFixed(2)})`);
         }
 
-        // Final decision logic
-        if (reasons.unavailable.length >= 3) {
+        const rota = parseFloat(metrics?.returnOnTangibleAssets ?? "NaN");
+        if (!isNaN(rota)) {
+            if (rota > 0.05) {
+                reasons.passed.push(`Solid return on tangible assets (${(rota * 100).toFixed(2)}%)`);
+                score++;
+            } else {
+                reasons.failed.push(`Low return on tangible assets (${(rota * 100).toFixed(2)}%)`);
+            }
+        }
+
+        const intangiblesRatio = parseFloat(metrics?.intangiblesToTotalAssets ?? "NaN");
+        if (!isNaN(intangiblesRatio) && intangiblesRatio < 0.2) {
+            reasons.passed.push("Low reliance on intangibles — balance sheet is clean");
+            score++;
+        }
+
+        const grahamNumber = parseFloat(metrics?.grahamNumber ?? "NaN");
+        if (!isNaN(grahamNumber) && pricePerShare < grahamNumber) {
+            reasons.passed.push("Price is below Graham Number — strong value signal");
+            score++;
+        }
+
+        const valuation = estimateIntrinsicValue({ latestFCF, metrics, pricePerShare });
+        if (!isNaN(valuation.intrinsicValuePerShare)) {
+            if (valuation.signal === 'Undervalued') {
+                reasons.passed.push(`Intrinsic Value per Share: $${valuation.intrinsicValuePerShare.toFixed(2)} (${valuation.signal})`);
+                score++;
+            } else if (valuation.signal === 'Overvalued') {
+                reasons.failed.push(`Intrinsic Value per Share: $${valuation.intrinsicValuePerShare.toFixed(2)} (${valuation.signal})`);
+                score--;
+            }
+        } else {
+            reasons.unavailable.push("Could not estimate intrinsic value");
+        }
+
+        if (reasons.unavailable.length >= 5) {
             return {
                 signal: Signal.None,
                 reasons
             };
         }
 
-        if (score >= 7) return { signal: Signal.Positive, reasons };
-        if (score <= 3) return { signal: Signal.Negative, reasons };
-        return { signal: Signal.None, reasons };
+        if (score >= 14) return { signal: Signal.Positive, reasons, score };
+        if (score <= 5) return { signal: Signal.Negative, reasons, score };
+        return { signal: Signal.None, reasons, score };
 
     } catch (error) {
         console.error("Error during fundamental analysis:", error);
         return {
             signal: Signal.None,
-            reasons: { error: error.message }
+            reasons: { error: error.message },
+            score: 0
         };
     }
 }
