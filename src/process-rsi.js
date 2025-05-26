@@ -27,7 +27,7 @@ const lowerLine = 30;
 
 const getRsiSignal = async (symbol, name) => {
     const result = await yahooFinance.historical(symbol, {
-        period1: '2020-01-01',
+        period1: '2024-01-01',
         interval: interval,
     });
 

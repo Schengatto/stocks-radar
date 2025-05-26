@@ -757,7 +757,7 @@ export const NASDAQ_LARGE_CAPS = [
     },
     {
         "name": "Ryanair Holdings plc",
-        "symbol": "RYAOF"
+        "symbol": "RYAAY"
     },
     {
         "name": "Ericsson",
