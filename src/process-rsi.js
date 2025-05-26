@@ -74,7 +74,7 @@ const getRsiSignal = async (symbol, name) => {
         epsForward = quote.epsForward || 0;
         earningsTimestampStart = quote.earningsTimestampStart && quote.earningsTimestampStart.toISOString().split("T")[0] || "NA";
     } catch (e) {
-        console.warn(`Failed to get P/E ratio for ${symbol}:`, e.message);
+        console.warn(`Failed to get P/E ratio for ${symbol}:`);
     }
     return {
         symbol,
@@ -94,8 +94,8 @@ const getRsiSignal = async (symbol, name) => {
 const generateSignals = async () => {
     const results = await Promise.all(TICKERS.map(async ({ symbol, name }) => await getRsiSignal(symbol, name)));
 
-    const buySymbols = results.filter(r => r.signal === Signal.Buy);
-    const sellSymbol = results.filter(r => r.signal === Signal.Sell);
+    const buySymbols = results.filter(r => !!r && r.signal === Signal.Buy);
+    const sellSymbol = results.filter(r => !!r && r.signal === Signal.Sell);
 
     let message = "";
 
