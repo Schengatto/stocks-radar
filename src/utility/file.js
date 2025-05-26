@@ -1,7 +1,10 @@
 import fs from "fs";
+import path from "path";
 
 export const saveDataToFile = async (filePath, data) => {
-    await fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+    const dir = path.dirname(filePath);
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
 };
 
 export const readDataFromFile = async (filePath, encoding = "utf8") => {
